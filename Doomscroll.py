@@ -5,6 +5,98 @@ from ultralytics import YOLO
 
 import os
 import sys
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+
+def get_font(size, bold=True):
+    """Loads a clean, modern system font (Segoe UI or Arial) with fallback."""
+    font_names = (
+        ["segoeuib.ttf", "arialbd.ttf", "impact.ttf"]
+        if bold
+        else ["segoeui.ttf", "arial.ttf"]
+    )
+    windir = os.environ.get("WINDIR", "C:\\Windows")
+    for name in font_names:
+        path = os.path.join(windir, "Fonts", name)
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                pass
+    return ImageFont.load_default()
+
+def draw_centered_alert(frame, main_text, sub_text=None):
+    """Draws a beautiful, modern centered alert card with large crisp typography."""
+    h, w = frame.shape[:2]
+    cx, cy = w // 2, h // 2
+
+    img_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(img_pil, "RGBA")
+
+    font_main = get_font(46, bold=True)
+    font_sub = get_font(26, bold=False)
+
+    card_w = min(920, w - 40)
+    card_h = 170 if sub_text else 120
+    x1 = cx - card_w // 2
+    y1 = cy - card_h // 2
+    x2 = cx + card_w // 2
+    y2 = cy + card_h // 2
+
+    # Semi-transparent dark frosted glass card with vivid crimson/red border
+    draw.rounded_rectangle(
+        [(x1, y1), (x2, y2)],
+        radius=20,
+        fill=(18, 18, 24, 220),
+        outline=(255, 59, 48, 240),
+        width=3,
+    )
+
+    if sub_text:
+        main_y = cy - 28
+        sub_y = cy + 34
+    else:
+        main_y = cy
+        sub_y = None
+
+    # Main Alert: Large, vibrant alert red/coral
+    draw.text((cx, main_y), main_text, font=font_main, fill=(255, 75, 75), anchor="mm")
+
+    # Subtext: Clean bright white
+    if sub_text:
+        draw.text((cx, sub_y), sub_text, font=font_sub, fill=(245, 245, 245), anchor="mm")
+
+    return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+
+def draw_progress_badge(frame, elapsed_time, delay):
+    """Draws a sleek top-centered pill badge showing holding progress."""
+    h, w = frame.shape[:2]
+    cx = w // 2
+
+    img_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(img_pil, "RGBA")
+    font = get_font(22, bold=True)
+
+    text = f"Phone detected: {elapsed_time:.1f}s / {delay:.1f}s"
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw = bbox[2] - bbox[0]
+    th = bbox[3] - bbox[1]
+
+    pw, ph = tw + 40, th + 20
+    x1, y1 = cx - pw // 2, 20
+    x2, y2 = cx + pw // 2, 20 + ph
+
+    # Top pill with amber glow
+    draw.rounded_rectangle(
+        [(x1, y1), (x2, y2)],
+        radius=14,
+        fill=(20, 20, 25, 210),
+        outline=(255, 170, 0, 230),
+        width=2,
+    )
+    draw.text((cx, 20 + ph // 2), text, font=font, fill=(255, 185, 35), anchor="mm")
+
+    return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
 # 1. Initialize Pygame Audio Mixer
 pygame.mixer.init()
@@ -93,15 +185,7 @@ while cap.isOpened():
 
             # Show holding progress on screen
             if not alarm_active:
-                cv2.putText(
-                    frame,
-                    f"Phone detected: {elapsed_time:.1f}s / {DETECTION_DELAY}s",
-                    (30, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (0, 165, 255),
-                    2
-                )
+                frame = draw_progress_badge(frame, elapsed_time, DETECTION_DELAY)
 
             # Trigger alarm if phone is held longer than the threshold
             if elapsed_time >= DETECTION_DELAY:
@@ -113,15 +197,11 @@ while cap.isOpened():
                     import winsound
                     winsound.Beep(1200, 200)
                 
-                # Flash visual alert overlay on the video feed
-                cv2.putText(
+                # Big, modern, centered alert overlay
+                frame = draw_centered_alert(
                     frame, 
-                    "DOOMSCROLLING DETECTED! PUT IT DOWN!", 
-                    (30, 80),
-                    cv2.FONT_HERSHEY_SIMPLEX, 
-                    0.9, 
-                    (0, 0, 255), 
-                    3
+                    main_text="DOOMSCROLLING DETECTED!", 
+                    sub_text="PUT YOUR PHONE DOWN!"
                 )
         else:
             # Grace period expired: phone put down
