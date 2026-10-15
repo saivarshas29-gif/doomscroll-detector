@@ -1,15 +1,21 @@
-import cv2
+import os
+import sys
 import time
+from functools import lru_cache
+
+import cv2
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 import pygame
 from ultralytics import YOLO
 
-import os
-import sys
-import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+# Resolve base directory so script works regardless of execution working directory
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
+@lru_cache(maxsize=16)
 def get_font(size, bold=True):
-    """Loads a clean, modern system font (Segoe UI or Arial) with fallback."""
+    """Loads and caches a clean, modern system font (Segoe UI or Arial) with fallback."""
     font_names = (
         ["segoeuib.ttf", "arialbd.ttf", "impact.ttf"]
         if bold
@@ -24,6 +30,7 @@ def get_font(size, bold=True):
             except Exception:
                 pass
     return ImageFont.load_default()
+
 
 def draw_centered_alert(frame, main_text, sub_text=None):
     """Draws a beautiful, modern centered alert card with large crisp typography."""
@@ -68,6 +75,7 @@ def draw_centered_alert(frame, main_text, sub_text=None):
 
     return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
+
 def draw_progress_badge(frame, elapsed_time, delay):
     """Draws a sleek top-centered pill badge showing holding progress."""
     h, w = frame.shape[:2]
@@ -98,127 +106,149 @@ def draw_progress_badge(frame, elapsed_time, delay):
 
     return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
-# 1. Initialize Pygame Audio Mixer
-pygame.mixer.init()
-alarm_loaded = False
-sound_candidates = ["alarm.mp3", "alarm.mp3.mp3", "alarm.wav"]
-sound_file = next((f for f in sound_candidates if os.path.exists(f)), None)
 
-if sound_file:
+def main():
+    # 1. Initialize Pygame Audio Mixer
+    pygame.mixer.init()
+    alarm_loaded = False
+    sound_candidates = [
+        os.path.join(BASE_DIR, "alarm.mp3"),
+        os.path.join(BASE_DIR, "alarm.wav"),
+    ]
+    sound_file = next((f for f in sound_candidates if os.path.exists(f)), None)
+
+    if sound_file:
+        try:
+            pygame.mixer.music.load(sound_file)
+            alarm_loaded = True
+            print(f"Loaded alarm sound: {os.path.basename(sound_file)}")
+        except Exception as e:
+            print(f"[Warning] Could not load alarm sound: {e}")
+    else:
+        print("[Warning] No sound file found. Will use system beep fallback.")
+
+    # 2. Load YOLOv8 Small model (significantly better at angled / slanting phones than Nano)
+    model_path = os.path.join(BASE_DIR, "yolov8s.pt")
+    model = YOLO(model_path if os.path.exists(model_path) else "yolov8s.pt")
+
+    # 3. Start Webcam Stream (0 is usually the default web camera)
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        print("\n[Error] Could not open webcam (index 0).")
+        print("Please make sure your camera is connected and not currently used by another application.\n")
+        return
+
+    # Request HD resolution (1280x720) so thin edges of slanting phones are clearer
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+    # Settings & Debounce Timers
+    PHONE_CLASSES = {67: "Phone", 65: "Remote/Phone"}  # COCO indexes
+    CONFIDENCE_THRESHOLD = 0.22  # Tuned lower for slanting/tilted orientations
+    DETECTION_DELAY = 1.5        # Seconds of holding phone before triggering alarm
+    GRACE_PERIOD = 1.0           # Seconds of buffer before resetting timer (prevents angle flicker)
+
+    phone_detected_start_time = None
+    last_seen_time = 0
+    alarm_active = False
+
+    print("\n--- Doomscroll Detector Running ---")
+    print("Press 'q' in the camera window (or click 'X') to quit.\n")
+
     try:
-        pygame.mixer.music.load(sound_file)
-        alarm_loaded = True
-        print(f"Loaded alarm sound: {sound_file}")
-    except Exception as e:
-        print(f"[Warning] Could not load alarm sound: {e}")
-else:
-    print("[Warning] No sound file found. Will use system beep fallback.")
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                print("Failed to grab frame from camera.")
+                break
 
-# 2. Load YOLOv8 Small model (significantly better at angled / slanting phones than Nano)
-# COCO dataset Class 67 is 'cell phone', 65 is 'remote'
-model = YOLO("yolov8s.pt")
-
-# 3. Start Webcam Stream (0 is usually the default web camera)
-cap = cv2.VideoCapture(0)
-# Request HD resolution (1280x720) so thin edges of slanting phones are clearer
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-
-# Settings & Debounce Timers
-PHONE_CLASSES = {67: "Phone", 65: "Remote/Phone"}  # COCO indexes
-CONFIDENCE_THRESHOLD = 0.22  # Tuned lower for slanting/tilted orientations
-DETECTION_DELAY = 1.5        # Seconds of holding phone before triggering alarm
-GRACE_PERIOD = 1.0           # Seconds of buffer before resetting timer (prevents angle flicker)
-
-phone_detected_start_time = None
-last_seen_time = 0
-alarm_active = False
-
-print("\n--- Doomscroll Detector Running ---")
-print("Press 'q' in the camera window to quit.\n")
-
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        print("Failed to grab frame from camera.")
-        break
-
-    # Run YOLO inference on the current frame
-    results = model(frame, verbose=False)[0]
-    
-    phone_found = False
-
-    # Check detected bounding boxes
-    for box in results.boxes:
-        class_id = int(box.cls[0])
-        confidence = float(box.conf[0])
-
-        if class_id in PHONE_CLASSES and confidence >= CONFIDENCE_THRESHOLD:
-            phone_found = True
-            label = f"{PHONE_CLASSES[class_id]} ({confidence:.2f})"
+            # Run YOLO inference on the current frame
+            results = model(frame, verbose=False)[0]
             
-            # Draw bounding box around the phone
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
-            cv2.putText(
-                frame, 
-                label, 
-                (x1, max(20, y1 - 10)),
-                cv2.FONT_HERSHEY_SIMPLEX, 
-                0.6, 
-                (0, 0, 255), 
-                2
-            )
+            phone_found = False
 
-    # State Machine Logic with Grace Period (handles flickering/angles)
-    current_time = time.time()
+            # Check detected bounding boxes
+            for box in results.boxes:
+                class_id = int(box.cls[0])
+                confidence = float(box.conf[0])
 
-    if phone_found:
-        last_seen_time = current_time
-        if phone_detected_start_time is None:
-            phone_detected_start_time = current_time
+                if class_id in PHONE_CLASSES and confidence >= CONFIDENCE_THRESHOLD:
+                    phone_found = True
+                    label = f"{PHONE_CLASSES[class_id]} ({confidence:.2f})"
+                    
+                    # Draw bounding box around the phone
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
+                    cv2.putText(
+                        frame, 
+                        label, 
+                        (x1, max(20, y1 - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 
+                        0.6, 
+                        (0, 0, 255), 
+                        2
+                    )
 
-    if phone_detected_start_time is not None:
-        # Check if still within grace period
-        if (current_time - last_seen_time) <= GRACE_PERIOD:
-            elapsed_time = current_time - phone_detected_start_time
+            # State Machine Logic with Grace Period (handles flickering/angles)
+            current_time = time.time()
 
-            # Show holding progress on screen
-            if not alarm_active:
-                frame = draw_progress_badge(frame, elapsed_time, DETECTION_DELAY)
+            if phone_found:
+                last_seen_time = current_time
+                if phone_detected_start_time is None:
+                    phone_detected_start_time = current_time
 
-            # Trigger alarm if phone is held longer than the threshold
-            if elapsed_time >= DETECTION_DELAY:
-                alarm_active = True
-                if alarm_loaded:
-                    if not pygame.mixer.music.get_busy():
-                        pygame.mixer.music.play(-1)  # Play in a continuous loop
-                elif sys.platform == "win32":
-                    import winsound
-                    winsound.Beep(1200, 200)
-                
-                # Big, modern, centered alert overlay
-                frame = draw_centered_alert(
-                    frame, 
-                    main_text="DOOMSCROLLING DETECTED!", 
-                    sub_text="PUT YOUR PHONE DOWN!"
-                )
-        else:
-            # Grace period expired: phone put down
-            phone_detected_start_time = None
-            if alarm_active:
-                alarm_active = False
-                if alarm_loaded:
-                    pygame.mixer.music.stop()
+            if phone_detected_start_time is not None:
+                # Check if still within grace period
+                if (current_time - last_seen_time) <= GRACE_PERIOD:
+                    elapsed_time = current_time - phone_detected_start_time
 
-    # Display video feed
-    cv2.imshow("Doomscroll Detector", frame)
+                    # Show holding progress on screen
+                    if not alarm_active:
+                        frame = draw_progress_badge(frame, elapsed_time, DETECTION_DELAY)
 
-    # Press 'q' to exit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+                    # Trigger alarm if phone is held longer than the threshold
+                    if elapsed_time >= DETECTION_DELAY:
+                        alarm_active = True
+                        if alarm_loaded:
+                            if not pygame.mixer.music.get_busy():
+                                pygame.mixer.music.play(-1)  # Play in a continuous loop
+                        elif sys.platform == "win32":
+                            import winsound
+                            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+                        
+                        # Big, modern, centered alert overlay
+                        frame = draw_centered_alert(
+                            frame, 
+                            main_text="DOOMSCROLLING DETECTED!", 
+                            sub_text="PUT YOUR PHONE DOWN!"
+                        )
+                else:
+                    # Grace period expired: phone put down
+                    phone_detected_start_time = None
+                    if alarm_active:
+                        alarm_active = False
+                        if alarm_loaded:
+                            pygame.mixer.music.stop()
 
-# Cleanup resources
-cap.release()
-cv2.destroyAllWindows()
-pygame.mixer.quit()
+            # Display video feed
+            cv2.imshow("Doomscroll Detector", frame)
+
+            # Check if user pressed 'q' or closed the window via 'X' button
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+            if cv2.getWindowProperty("Doomscroll Detector", cv2.WND_PROP_VISIBLE) < 1:
+                break
+
+    finally:
+        # Cleanup resources safely
+        cap.release()
+        cv2.destroyAllWindows()
+        if alarm_loaded:
+            pygame.mixer.music.stop()
+        pygame.mixer.quit()
+        print("Doomscroll Detector closed safely.")
+
+
+if __name__ == "__main__":
+    main()

@@ -3,4 +3,5 @@ ultralytics
 pygame-ce
 torch
 torchvision
-
+Pillow
+numpy
