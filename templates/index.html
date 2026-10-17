@@ -187,7 +187,10 @@
             <h2 class="text-2xl font-bold text-white tracking-tight">Academic Overview</h2>
             <p class="text-sm text-slate-400">Welcome back! Here's your study roadmap and priorities for today.</p>
           </div>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
+            <button onclick="openModal('modal-upload-timetable')" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-xs flex items-center gap-1.5 transition-all">
+              <i data-lucide="upload-cloud" class="w-4 h-4 text-violet-400"></i> Import Schedule
+            </button>
             <button onclick="openModal('modal-task')" class="px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-lg shadow-violet-600/20 transition-all">
               <i data-lucide="plus" class="w-4 h-4"></i> New Task
             </button>
@@ -295,9 +298,14 @@
             <h2 class="text-2xl font-bold text-white tracking-tight">Semester Timetable</h2>
             <p class="text-sm text-slate-400">Weekly class and lab schedules with room numbers and instructors.</p>
           </div>
-          <button onclick="openModal('modal-class')" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all">
-            <i data-lucide="plus" class="w-4 h-4"></i> Add Class
-          </button>
+          <div class="flex items-center gap-2">
+            <button onclick="openModal('modal-upload-timetable')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-sm flex items-center gap-2 transition-all">
+              <i data-lucide="upload-cloud" class="w-4 h-4 text-violet-400"></i> Upload / Import
+            </button>
+            <button onclick="openModal('modal-class')" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all">
+              <i data-lucide="plus" class="w-4 h-4"></i> Add Class
+            </button>
+          </div>
         </div>
 
         <!-- Day Selector Pills -->
@@ -326,9 +334,14 @@
             <h2 class="text-2xl font-bold text-white tracking-tight">Exams & Tests Tracker</h2>
             <p class="text-sm text-slate-400">Keep track of midterms, lab finals, exam venues, and live countdowns.</p>
           </div>
-          <button onclick="openModal('modal-exam')" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm flex items-center gap-2 shadow-lg shadow-amber-600/20 transition-all">
-            <i data-lucide="plus" class="w-4 h-4"></i> Add Exam
-          </button>
+          <div class="flex items-center gap-2">
+            <button onclick="openModal('modal-upload-exams')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-sm flex items-center gap-2 transition-all">
+              <i data-lucide="upload-cloud" class="w-4 h-4 text-amber-400"></i> Upload / Import
+            </button>
+            <button onclick="openModal('modal-exam')" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm flex items-center gap-2 shadow-lg shadow-amber-600/20 transition-all">
+              <i data-lucide="plus" class="w-4 h-4"></i> Add Exam
+            </button>
+          </div>
         </div>
 
         <!-- Exams List Grid -->
@@ -740,6 +753,140 @@
           </div>
         </div>
         <button type="submit" class="mt-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold text-sm text-white transition-all">Save Course</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 6: Upload Timetable -->
+  <div id="modal-upload-timetable" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg flex flex-col gap-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-400 flex items-center justify-center">
+            <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg text-white">Upload Timetable</h3>
+            <p class="text-xs text-slate-400">Import CSV, Excel (.xlsx), or paste schedule text</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-upload-timetable')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <!-- Mode Tabs (File vs Paste Text) -->
+      <div class="flex border-b border-slate-800 gap-4 text-xs font-semibold">
+        <button type="button" onclick="switchUploadMethod('tt', 'file')" id="tt-tab-file-btn" class="pb-2 border-b-2 border-violet-500 text-violet-400">File Upload (.csv, .xlsx)</button>
+        <button type="button" onclick="switchUploadMethod('tt', 'text')" id="tt-tab-text-btn" class="pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200">Paste Text / Rows</button>
+      </div>
+
+      <form onsubmit="handleTimetableUpload(event)" class="flex flex-col gap-4">
+        <!-- File input panel -->
+        <div id="tt-panel-file" class="flex flex-col gap-2">
+          <div class="border-2 border-dashed border-slate-700 hover:border-violet-500 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 text-center bg-slate-800/40 cursor-pointer transition-all" onclick="document.getElementById('tt-file-input').click()">
+            <i data-lucide="file-spreadsheet" class="w-10 h-10 text-violet-400"></i>
+            <span class="text-sm font-medium text-slate-200" id="tt-file-label">Click or drag & drop your timetable file</span>
+            <span class="text-xs text-slate-500">Supports .CSV, .XLSX, .TXT, or .JSON</span>
+            <input type="file" id="tt-file-input" accept=".csv,.xlsx,.xls,.txt,.json" class="hidden" onchange="updateFileLabel('tt-file-input', 'tt-file-label')">
+          </div>
+        </div>
+
+        <!-- Text input panel -->
+        <div id="tt-panel-text" class="hidden flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-slate-400">Paste comma, tab, or pipe-separated lines:</label>
+          <textarea id="tt-text-input" rows="6" placeholder="Monday, Data Structures, 09:00, 10:30, Room 302, Dr. Rao&#10;Tuesday, Computer Networks, 11:00, 12:30, Room 405, Dr. Anita" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono focus:border-violet-500 focus:outline-none"></textarea>
+        </div>
+
+        <!-- Replace vs Append option -->
+        <div class="p-3 rounded-xl bg-slate-800/60 border border-slate-800 flex items-center justify-between text-xs">
+          <span class="text-slate-400 font-medium">Import Strategy:</span>
+          <div class="flex items-center gap-4">
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input type="radio" name="tt-import-mode" value="replace" checked class="text-violet-600 bg-slate-700"> Replace Old
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input type="radio" name="tt-import-mode" value="append" class="text-violet-600 bg-slate-700"> Append
+            </label>
+          </div>
+        </div>
+
+        <!-- Download template button -->
+        <div class="flex items-center justify-between text-xs">
+          <a href="/api/template/timetable" download class="text-violet-400 hover:text-violet-300 font-medium flex items-center gap-1">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i> Download CSV Template
+          </a>
+          <span class="text-slate-500">Auto-sorts by day & time</span>
+        </div>
+
+        <button type="submit" id="tt-upload-submit-btn" class="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all">
+          <i data-lucide="check" class="w-4 h-4"></i> Upload & Sort Timetable
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 7: Upload Exams -->
+  <div id="modal-upload-exams" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg flex flex-col gap-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+            <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg text-white">Upload Exam Schedule</h3>
+            <p class="text-xs text-slate-400">Import CSV, Excel (.xlsx), or paste exam dates</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-upload-exams')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <!-- Mode Tabs (File vs Paste Text) -->
+      <div class="flex border-b border-slate-800 gap-4 text-xs font-semibold">
+        <button type="button" onclick="switchUploadMethod('exam', 'file')" id="exam-tab-file-btn" class="pb-2 border-b-2 border-amber-500 text-amber-400">File Upload (.csv, .xlsx)</button>
+        <button type="button" onclick="switchUploadMethod('exam', 'text')" id="exam-tab-text-btn" class="pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200">Paste Text / Rows</button>
+      </div>
+
+      <form onsubmit="handleExamsUpload(event)" class="flex flex-col gap-4">
+        <!-- File input panel -->
+        <div id="exam-panel-file" class="flex flex-col gap-2">
+          <div class="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 text-center bg-slate-800/40 cursor-pointer transition-all" onclick="document.getElementById('exam-file-input').click()">
+            <i data-lucide="file-spreadsheet" class="w-10 h-10 text-amber-400"></i>
+            <span class="text-sm font-medium text-slate-200" id="exam-file-label">Click or drag & drop your exam file</span>
+            <span class="text-xs text-slate-500">Supports .CSV, .XLSX, .TXT, or .JSON</span>
+            <input type="file" id="exam-file-input" accept=".csv,.xlsx,.xls,.txt,.json" class="hidden" onchange="updateFileLabel('exam-file-input', 'exam-file-label')">
+          </div>
+        </div>
+
+        <!-- Text input panel -->
+        <div id="exam-panel-text" class="hidden flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-slate-400">Paste exam rows (Subject, Type, Date, Start, End, Venue, Syllabus):</label>
+          <textarea id="exam-text-input" rows="6" placeholder="Data Structures, Midterm, 2026-10-25, 10:00, 12:00, Hall A, Trees and Graphs&#10;Operating Systems, Final, 2026-11-15, 14:00, 16:00, Hall B, All Modules" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono focus:border-amber-500 focus:outline-none"></textarea>
+        </div>
+
+        <!-- Replace vs Append option -->
+        <div class="p-3 rounded-xl bg-slate-800/60 border border-slate-800 flex items-center justify-between text-xs">
+          <span class="text-slate-400 font-medium">Import Strategy:</span>
+          <div class="flex items-center gap-4">
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input type="radio" name="exam-import-mode" value="replace" checked class="text-amber-600 bg-slate-700"> Replace Old
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input type="radio" name="exam-import-mode" value="append" class="text-amber-600 bg-slate-700"> Append
+            </label>
+          </div>
+        </div>
+
+        <!-- Download template button -->
+        <div class="flex items-center justify-between text-xs">
+          <a href="/api/template/exams" download class="text-amber-400 hover:text-amber-300 font-medium flex items-center gap-1">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i> Download CSV Template
+          </a>
+          <span class="text-slate-500">Auto-sorts by date & time</span>
+        </div>
+
+        <button type="submit" id="exam-upload-submit-btn" class="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-500 font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all">
+          <i data-lucide="check" class="w-4 h-4"></i> Upload & Sort Exams
+        </button>
       </form>
     </div>
   </div>
@@ -1514,6 +1661,133 @@
       await fetch(`/api/gpa?id=${id}`, { method: 'DELETE' });
       showToast('Course grade deleted.');
       loadGpa();
+    }
+
+    // ======================================================
+    // 📤 TIMETABLE & EXAMS UPLOAD HANDLERS
+    // ======================================================
+    function updateFileLabel(inputId, labelId) {
+      const input = document.getElementById(inputId);
+      const label = document.getElementById(labelId);
+      if (input.files && input.files.length > 0) {
+        label.innerText = 'Selected: ' + input.files[0].name;
+      }
+    }
+
+    function switchUploadMethod(prefix, method) {
+      const panelFile = document.getElementById(`${prefix}-panel-file`);
+      const panelText = document.getElementById(`${prefix}-panel-text`);
+      const btnFile = document.getElementById(`${prefix}-tab-file-btn`);
+      const btnText = document.getElementById(`${prefix}-tab-text-btn`);
+      const colorClass = prefix === 'tt' ? 'border-violet-500 text-violet-400' : 'border-amber-500 text-amber-400';
+
+      if (method === 'file') {
+        panelFile.classList.remove('hidden');
+        panelText.classList.add('hidden');
+        btnFile.className = `pb-2 border-b-2 ${colorClass}`;
+        btnText.className = 'pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200';
+      } else {
+        panelFile.classList.add('hidden');
+        panelText.classList.remove('hidden');
+        btnFile.className = 'pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200';
+        btnText.className = `pb-2 border-b-2 ${colorClass}`;
+      }
+    }
+
+    async function handleTimetableUpload(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('tt-file-input');
+      const textInput = document.getElementById('tt-text-input').value.trim();
+      const mode = document.querySelector('input[name="tt-import-mode"]:checked').value;
+      const submitBtn = document.getElementById('tt-upload-submit-btn');
+
+      const formData = new FormData();
+      formData.append('mode', mode);
+
+      if (fileInput.files.length > 0) {
+        formData.append('file', fileInput.files[0]);
+      } else if (textInput) {
+        formData.append('text', textInput);
+      } else {
+        alert('Please select a file or paste text lines to import.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Parsing & Sorting...';
+
+      try {
+        const res = await fetch('/api/upload/timetable', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeModal('modal-upload-timetable');
+          showToast(data.message);
+          loadTimetable();
+          loadOverview();
+          fileInput.value = '';
+          document.getElementById('tt-file-label').innerText = 'Click or drag & drop your timetable file';
+          document.getElementById('tt-text-input').value = '';
+        } else {
+          alert('Error: ' + data.message);
+        }
+      } catch (err) {
+        alert('Upload failed: ' + err.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Upload & Sort Timetable';
+        lucide.createIcons();
+      }
+    }
+
+    async function handleExamsUpload(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('exam-file-input');
+      const textInput = document.getElementById('exam-text-input').value.trim();
+      const mode = document.querySelector('input[name="exam-import-mode"]:checked').value;
+      const submitBtn = document.getElementById('exam-upload-submit-btn');
+
+      const formData = new FormData();
+      formData.append('mode', mode);
+
+      if (fileInput.files.length > 0) {
+        formData.append('file', fileInput.files[0]);
+      } else if (textInput) {
+        formData.append('text', textInput);
+      } else {
+        alert('Please select a file or paste text lines to import.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Parsing & Sorting...';
+
+      try {
+        const res = await fetch('/api/upload/exams', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeModal('modal-upload-exams');
+          showToast(data.message);
+          loadExams();
+          loadOverview();
+          fileInput.value = '';
+          document.getElementById('exam-file-label').innerText = 'Click or drag & drop your exam file';
+          document.getElementById('exam-text-input').value = '';
+        } else {
+          alert('Error: ' + data.message);
+        }
+      } catch (err) {
+        alert('Upload failed: ' + err.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Upload & Sort Exams';
+        lucide.createIcons();
+      }
     }
 
     // Theme Toggle

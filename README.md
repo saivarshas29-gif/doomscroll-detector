@@ -6,13 +6,16 @@ A modern, full-featured academic productivity hub built with **Flask**, **SQLite
 
 ## ✨ Features
 
-### 1. 📅 Semester Timetable
+### 1. 📅 Semester Timetable & Smart Upload
 - Track your weekly class and laboratory schedule from Monday to Saturday.
+- **Upload & Auto-Sort**: Import CSV, Excel (`.xlsx`), text, or paste rows; FocusSphere automatically parses and sorts your entire timetable chronologically by day and time.
+- Downloadable starter CSV templates for easy 1-click importing.
 - Color-coded subject tags, room/hall numbers, instructor assignments, and class timings.
 - Add and delete classes dynamically.
 
-### 2. 📝 Exam & Test Tracker
+### 2. 📝 Exam & Test Tracker & Smart Upload
 - Track Midterm exams, Final semester exams, Lab practicals, and Unit tests.
+- **Upload & Auto-Sort**: Import exam dates and schedules via CSV, Excel, or text; automatically sorts exams in chronological sequence!
 - **Live Real-Time Countdown Clocks** (`3d 14h left`) with dynamic urgency color indicators.
 - Track exam venues, syllabus topics, and special examination instructions.
 

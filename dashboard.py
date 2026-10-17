@@ -3,7 +3,11 @@ import sys
 import sqlite3
 import subprocess
 import datetime
-from flask import Flask, render_template, request, jsonify
+import csv
+import io
+import re
+import openpyxl
+from flask import Flask, render_template, request, jsonify, Response
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "study_data.db")
@@ -320,6 +324,299 @@ def api_exams():
             conn.commit()
         conn.close()
         return jsonify({"success": True})
+
+
+# ==========================================
+# 📤 FILE UPLOAD, PARSING & TEMPLATES API
+# ==========================================
+SUBJECT_PALETTE = [
+    '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', 
+    '#EC4899', '#06B6D4', '#6366F1', '#14B8A6',
+    '#F97316', '#84CC16', '#A855F7', '#E11D48'
+]
+
+def get_color_for_subject(subject, color_cache={}):
+    s = str(subject).strip().lower()
+    if s not in color_cache:
+        color_cache[s] = SUBJECT_PALETTE[len(color_cache) % len(SUBJECT_PALETTE)]
+    return color_cache[s]
+
+def normalize_day(val):
+    v = str(val).strip().lower()
+    mapping = {
+        'mon': 'Monday', 'monday': 'Monday',
+        'tue': 'Tuesday', 'tues': 'Tuesday', 'tuesday': 'Tuesday',
+        'wed': 'Wednesday', 'wednesday': 'Wednesday',
+        'thu': 'Thursday', 'thur': 'Thursday', 'thurs': 'Thursday', 'thursday': 'Thursday',
+        'fri': 'Friday', 'friday': 'Friday',
+        'sat': 'Saturday', 'saturday': 'Saturday',
+        'sun': 'Sunday', 'sunday': 'Sunday'
+    }
+    for k, day in mapping.items():
+        if v.startswith(k):
+            return day
+    return 'Monday'
+
+def normalize_time(val, default='09:00'):
+    v = str(val).strip()
+    match = re.search(r'(\d{1,2})[:.](\d{2})?\s*(am|pm)?', v, re.IGNORECASE)
+    if match:
+        hr = int(match.group(1))
+        mn = int(match.group(2) or 0)
+        ampm = (match.group(3) or '').lower()
+        if ampm == 'pm' and hr < 12: hr += 12
+        if ampm == 'am' and hr == 12: hr = 0
+        return f'{hr:02d}:{mn:02d}'
+    return default
+
+def normalize_date(val):
+    v = str(val).strip()
+    if not v:
+        return datetime.date.today().isoformat()
+    if re.match(r'^\d{4}-\d{2}-\d{2}', v):
+        return v[:10]
+    m = re.match(r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})', v)
+    if m:
+        p1, p2, yr = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        d, mo = (p1, p2) if p1 > 12 else (p1, p2)
+        return f'{yr:04d}-{mo:02d}-{d:02d}'
+    for fmt in ('%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y', '%Y/%m/%d', '%b %d, %Y', '%d %b %Y', '%B %d, %Y'):
+        try:
+            return datetime.datetime.strptime(v, fmt).date().isoformat()
+        except ValueError:
+            pass
+    return datetime.date.today().isoformat()
+
+def extract_raw_rows(file_storage=None, text_content=None):
+    """Extracts a 2D list of strings from an uploaded file or text string."""
+    rows = []
+    if file_storage and file_storage.filename:
+        filename = file_storage.filename.lower()
+        content = file_storage.read()
+        if filename.endswith('.xlsx'):
+            wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+            sheet = wb.active
+            for r in sheet.iter_rows(values_only=True):
+                if any(r):
+                    rows.append([str(c or '').strip() for c in r])
+            return rows
+        else:
+            try:
+                text = content.decode('utf-8')
+            except UnicodeDecodeError:
+                text = content.decode('latin-1')
+    elif text_content:
+        text = text_content
+    else:
+        return []
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return []
+
+    first_line = lines[0]
+    delim = ','
+    if '\t' in first_line: delim = '\t'
+    elif ';' in first_line: delim = ';'
+    elif '|' in first_line: delim = '|'
+
+    reader = csv.reader(io.StringIO(text), delimiter=delim)
+    for r in reader:
+        if any(r):
+            rows.append([c.strip() for c in r])
+    return rows
+
+def parse_timetable_rows(rows):
+    if not rows:
+        return []
+
+    first = [c.lower() for c in rows[0]]
+    day_idx = next((i for i, c in enumerate(first) if 'day' in c or 'week' in c), None)
+    subj_idx = next((i for i, c in enumerate(first) if 'sub' in c or 'course' in c or 'class' in c or 'name' in c), None)
+    start_idx = next((i for i, c in enumerate(first) if 'start' in c or 'from' in c or 'begin' in c), None)
+    end_idx = next((i for i, c in enumerate(first) if 'end' in c or 'to' in c), None)
+    room_idx = next((i for i, c in enumerate(first) if 'room' in c or 'hall' in c or 'lab' in c or 'venue' in c), None)
+    instr_idx = next((i for i, c in enumerate(first) if 'inst' in c or 'teach' in c or 'prof' in c or 'faculty' in c), None)
+
+    start_row = 1 if (day_idx is not None or subj_idx is not None) else 0
+
+    if day_idx is None: day_idx = 0
+    if subj_idx is None: subj_idx = 1
+    if start_idx is None: start_idx = 2
+    if end_idx is None: end_idx = 3
+    if room_idx is None: room_idx = 4
+    if instr_idx is None: instr_idx = 5
+
+    parsed = []
+    for r in rows[start_row:]:
+        if len(r) <= max(day_idx, subj_idx):
+            continue
+        subj = r[subj_idx].strip() if subj_idx < len(r) else ""
+        if not subj:
+            continue
+        day = normalize_day(r[day_idx] if day_idx < len(r) else "Monday")
+        st = normalize_time(r[start_idx] if start_idx < len(r) else "09:00", "09:00")
+        et = normalize_time(r[end_idx] if end_idx < len(r) else "10:30", "10:30")
+        room = r[room_idx].strip() if room_idx < len(r) else ""
+        instructor = r[instr_idx].strip() if instr_idx < len(r) else ""
+        color = get_color_for_subject(subj)
+
+        parsed.append({
+            "day": day,
+            "subject": subj,
+            "start_time": st,
+            "end_time": et,
+            "room": room,
+            "instructor": instructor,
+            "color": color
+        })
+    return parsed
+
+def parse_exams_rows(rows):
+    if not rows:
+        return []
+
+    first = [c.lower() for c in rows[0]]
+    subj_idx = next((i for i, c in enumerate(first) if 'sub' in c or 'course' in c or 'exam' in c or 'name' in c), None)
+    type_idx = next((i for i, c in enumerate(first) if 'type' in c or 'cat' in c), None)
+    date_idx = next((i for i, c in enumerate(first) if 'date' in c or 'day' in c), None)
+    start_idx = next((i for i, c in enumerate(first) if 'start' in c or 'time' in c), None)
+    end_idx = next((i for i, c in enumerate(first) if 'end' in c or 'to' in c), None)
+    venue_idx = next((i for i, c in enumerate(first) if 'venue' in c or 'room' in c or 'hall' in c), None)
+    syll_idx = next((i for i, c in enumerate(first) if 'syll' in c or 'topic' in c or 'portion' in c), None)
+    notes_idx = next((i for i, c in enumerate(first) if 'note' in c or 'rem' in c or 'inst' in c), None)
+
+    start_row = 1 if (subj_idx is not None or date_idx is not None) else 0
+
+    if subj_idx is None: subj_idx = 0
+    if type_idx is None: type_idx = 1
+    if date_idx is None: date_idx = 2
+    if start_idx is None: start_idx = 3
+    if end_idx is None: end_idx = 4
+    if venue_idx is None: venue_idx = 5
+    if syll_idx is None: syll_idx = 6
+    if notes_idx is None: notes_idx = 7
+
+    parsed = []
+    for r in rows[start_row:]:
+        subj = r[subj_idx].strip() if subj_idx < len(r) else ""
+        if not subj:
+            continue
+        etype = r[type_idx].strip() if type_idx < len(r) else "Midterm Exam"
+        edate = normalize_date(r[date_idx] if date_idx < len(r) else "")
+        st = normalize_time(r[start_idx] if start_idx < len(r) else "10:00", "10:00")
+        et = normalize_time(r[end_idx] if end_idx < len(r) else "12:00", "12:00")
+        venue = r[venue_idx].strip() if venue_idx < len(r) else ""
+        syllabus = r[syll_idx].strip() if syll_idx < len(r) else ""
+        notes = r[notes_idx].strip() if notes_idx < len(r) else ""
+
+        parsed.append({
+            "subject": subj,
+            "exam_type": etype or "Midterm Exam",
+            "exam_date": edate,
+            "start_time": st,
+            "end_time": et,
+            "venue": venue,
+            "syllabus": syllabus,
+            "notes": notes
+        })
+    return parsed
+
+@app.route("/api/upload/timetable", methods=["POST"])
+def upload_timetable():
+    file_storage = request.files.get("file")
+    text_content = request.form.get("text") or (request.json.get("text") if request.is_json else None)
+    mode = request.form.get("mode") or (request.json.get("mode") if request.is_json else "replace")
+
+    raw_rows = extract_raw_rows(file_storage, text_content)
+    parsed = parse_timetable_rows(raw_rows)
+
+    if not parsed:
+        return jsonify({"success": False, "message": "No valid timetable entries found. Check your file format or column headers."}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if mode == "replace":
+        cursor.execute("DELETE FROM timetable")
+
+    cursor.executemany("""
+        INSERT INTO timetable (day, subject, start_time, end_time, room, instructor, color)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, [(p["day"], p["subject"], p["start_time"], p["end_time"], p["room"], p["instructor"], p["color"]) for p in parsed])
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "count": len(parsed),
+        "message": f"Successfully imported and sorted {len(parsed)} classes into your timetable!"
+    })
+
+@app.route("/api/upload/exams", methods=["POST"])
+def upload_exams():
+    file_storage = request.files.get("file")
+    text_content = request.form.get("text") or (request.json.get("text") if request.is_json else None)
+    mode = request.form.get("mode") or (request.json.get("mode") if request.is_json else "replace")
+
+    raw_rows = extract_raw_rows(file_storage, text_content)
+    parsed = parse_exams_rows(raw_rows)
+
+    if not parsed:
+        return jsonify({"success": False, "message": "No valid exam entries found. Check your file format or column headers."}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if mode == "replace":
+        cursor.execute("DELETE FROM exams")
+
+    cursor.executemany("""
+        INSERT INTO exams (subject, exam_type, exam_date, start_time, end_time, venue, syllabus, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, [(p["subject"], p["exam_type"], p["exam_date"], p["start_time"], p["end_time"], p["venue"], p["syllabus"], p["notes"]) for p in parsed])
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "count": len(parsed),
+        "message": f"Successfully imported and sorted {len(parsed)} exams with live countdowns!"
+    })
+
+@app.route("/api/template/timetable", methods=["GET"])
+def template_timetable():
+    csv_content = """Day,Subject,Start Time,End Time,Room,Instructor
+Monday,Data Structures & Algorithms,09:00,10:30,Room 302,Dr. Rao
+Monday,Operating Systems,11:00,12:30,Lab 2,Prof. Sharma
+Tuesday,Computer Networks,09:30,11:00,Room 405,Dr. Anita
+Tuesday,Database Management Systems,13:30,15:00,Lab 4,Prof. Verma
+Wednesday,Software Engineering,11:00,12:30,Room 201,Dr. Kapoor
+Thursday,Machine Learning,10:00,11:30,Seminar Hall,Dr. Nair
+Friday,Web Technologies,09:00,10:30,Lab 3,Prof. Gupta
+Saturday,Project Seminar,10:00,13:00,Innovation Lab,Mentor Group
+"""
+    return Response(
+        csv_content,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=FocusSphere_Timetable_Template.csv"}
+    )
+
+@app.route("/api/template/exams", methods=["GET"])
+def template_exams():
+    csv_content = """Subject,Exam Type,Exam Date,Start Time,End Time,Venue,Syllabus,Notes
+Data Structures & Algorithms,Midterm Exam,2026-10-25,10:00,12:00,Hall A,Trees and Graphs,Bring student ID card
+Operating Systems,Midterm Exam,2026-10-28,14:00,16:00,Hall B,Processes and Deadlocks,Calculator permitted
+Database Management Systems,Practical Exam,2026-11-05,09:30,12:30,Lab 4,SQL queries and Normalization,Submit practical record
+Computer Networks,Final Exam,2026-11-20,10:00,13:00,Auditorium,Modules 1 to 5,No electronic gadgets
+"""
+    return Response(
+        csv_content,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=FocusSphere_Exams_Template.csv"}
+    )
 
 
 # ==========================================
