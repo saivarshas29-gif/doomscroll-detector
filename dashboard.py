@@ -574,7 +574,8 @@ def focus_stop():
 if __name__ == "__main__":
     init_db()
     print("\n" + "="*60)
-    print("🚀 WinSphere Study Dashboard is running at:")
+    print("🚀 FocusSphere Study Dashboard is running at:")
     print("👉 http://127.0.0.1:5000")
     print("="*60 + "\n")
     app.run(debug=True, host="127.0.0.1", port=5000)
+

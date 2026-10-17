@@ -1,4 +1,4 @@
-# WinSphere — Study Dashboard & Focus Shield 🎓📵
+# FocusSphere — Smart Study Companion 🎓📵
 
 A modern, full-featured academic productivity hub built with **Flask**, **SQLite**, **Tailwind CSS**, and an integrated **AI Doomscroll Camera Shield** powered by **YOLOv8** & **OpenCV**.
 

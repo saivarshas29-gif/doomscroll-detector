@@ -6,3 +6,5 @@ torchvision
 Pillow
 numpy
 flask
+flask
+
