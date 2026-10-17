@@ -13,9 +13,12 @@ __pycache__/
 # Model weights (auto-downloaded on first run)
 *.pt
 
+# Local databases
+*.db
+*.sqlite3
+
 # IDE / OS metadata
 .vscode/
 .idea/
 Thumbs.db
 .DS_Store
-

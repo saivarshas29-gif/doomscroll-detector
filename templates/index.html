@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WinSphere — Study Hub & Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+              800: '#5b21b6',
+              900: '#4c1d95',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(139, 92, 246, 0.3);
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(139, 92, 246, 0.5);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col transition-colors duration-300">
+
+  <!-- ======================================================== -->
+  <!-- 🌟 TOP NAVIGATION BAR -->
+  <!-- ======================================================== -->
+  <header class="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 lg:px-8 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-500/20 text-white font-bold text-xl">
+        <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-violet-400 via-indigo-300 to-white bg-clip-text text-transparent">
+          WinSphere StudyHub
+        </h1>
+        <p class="text-xs text-slate-400 hidden sm:block">Academic Companion & Focus Dashboard</p>
+      </div>
+    </div>
+
+    <!-- Live Date/Clock & Focus Shield Status -->
+    <div class="flex items-center gap-3 sm:gap-4">
+      <!-- Live Clock -->
+      <div class="hidden md:flex flex-col text-right">
+        <span id="live-time" class="text-sm font-semibold text-slate-200">--:--:--</span>
+        <span id="live-date" class="text-xs text-slate-400">Loading date...</span>
+      </div>
+
+      <!-- Quick Doomscroll Shield Status Pill -->
+      <div id="shield-header-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-medium cursor-pointer hover:border-violet-500 transition-all" onclick="switchTab('focus')">
+        <span class="w-2 h-2 rounded-full bg-slate-500 animate-pulse" id="shield-dot"></span>
+        <span id="shield-text" class="text-slate-300">Shield Idle</span>
+      </div>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-300 transition-all" title="Toggle Theme">
+        <i data-lucide="moon" id="theme-icon" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ======================================================== -->
+  <!-- 📱 MAIN LAYOUT (SIDEBAR + CONTENT) -->
+  <!-- ======================================================== -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="w-64 bg-slate-900/50 border-r border-slate-800 p-4 flex flex-col gap-1 hidden md:flex shrink-0">
+      <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">Workspace</div>
+      
+      <button onclick="switchTab('overview')" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-all active-tab" data-tab="overview">
+        <i data-lucide="layout-dashboard" class="w-4 h-4 text-violet-400"></i>
+        <span>Overview</span>
+      </button>
+
+      <button onclick="switchTab('timetable')" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-all" data-tab="timetable">
+        <i data-lucide="calendar" class="w-4 h-4 text-blue-400"></i>
+        <span>Semester Timetable</span>
+      </button>
+
+      <button onclick="switchTab('exams')" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-all" data-tab="exams">
+        <i data-lucide="alarm-clock" class="w-4 h-4 text-amber-400"></i>
+        <span>Exams & Tests</span>
+      </button>
+
+      <button onclick="switchTab('tasks')" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-all" data-tab="tasks">
+        <i data-lucide="check-square" class="w-4 h-4 text-emerald-400"></i>
+        <span>Tasks & Assignments</span>
+      </button>
+
+      <button onclick="switchTab('focus')" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-all" data-tab="focus">
+        <i data-lucide="shield-alert" class="w-4 h-4 text-rose-400"></i>
+        <span>Focus & Doomscroll</span>
+      </button>
+
+      <button onclick="switchTab('attendance')" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-all" data-tab="attendance">
+        <i data-lucide="percent" class="w-4 h-4 text-cyan-400"></i>
+        <span>Attendance Tracker</span>
+      </button>
+
+      <button onclick="switchTab('gpa')" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-all" data-tab="gpa">
+        <i data-lucide="calculator" class="w-4 h-4 text-indigo-400"></i>
+        <span>GPA Calculator</span>
+      </button>
+
+      <!-- Bottom System Info -->
+      <div class="mt-auto pt-4 border-t border-slate-800 text-xs text-slate-500 flex flex-col gap-1 px-3">
+        <div class="flex items-center justify-between">
+          <span>AI Camera Focus</span>
+          <span class="text-emerald-400 font-medium">YOLOv8 Small</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span>Database</span>
+          <span class="text-slate-400">SQLite Connected</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MOBILE BOTTOM NAVIGATION -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900 border-t border-slate-800 flex justify-around p-2">
+      <button onclick="switchTab('overview')" class="p-2 text-slate-400 hover:text-violet-400 flex flex-col items-center text-[10px]" data-tab="overview">
+        <i data-lucide="layout-dashboard" class="w-5 h-5 mb-0.5"></i>Home
+      </button>
+      <button onclick="switchTab('timetable')" class="p-2 text-slate-400 hover:text-blue-400 flex flex-col items-center text-[10px]" data-tab="timetable">
+        <i data-lucide="calendar" class="w-5 h-5 mb-0.5"></i>Classes
+      </button>
+      <button onclick="switchTab('exams')" class="p-2 text-slate-400 hover:text-amber-400 flex flex-col items-center text-[10px]" data-tab="exams">
+        <i data-lucide="alarm-clock" class="w-5 h-5 mb-0.5"></i>Exams
+      </button>
+      <button onclick="switchTab('tasks')" class="p-2 text-slate-400 hover:text-emerald-400 flex flex-col items-center text-[10px]" data-tab="tasks">
+        <i data-lucide="check-square" class="w-5 h-5 mb-0.5"></i>Tasks
+      </button>
+      <button onclick="switchTab('focus')" class="p-2 text-slate-400 hover:text-rose-400 flex flex-col items-center text-[10px]" data-tab="focus">
+        <i data-lucide="shield-alert" class="w-5 h-5 mb-0.5"></i>Focus
+      </button>
+      <button onclick="switchTab('attendance')" class="p-2 text-slate-400 hover:text-cyan-400 flex flex-col items-center text-[10px]" data-tab="attendance">
+        <i data-lucide="percent" class="w-5 h-5 mb-0.5"></i>Attend
+      </button>
+      <button onclick="switchTab('gpa')" class="p-2 text-slate-400 hover:text-indigo-400 flex flex-col items-center text-[10px]" data-tab="gpa">
+        <i data-lucide="calculator" class="w-5 h-5 mb-0.5"></i>GPA
+      </button>
+    </nav>
+
+    <!-- ======================================================== -->
+    <!-- 📄 DYNAMIC TAB CONTENT CONTAINER -->
+    <!-- ======================================================== -->
+    <main class="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar pb-24 md:pb-8">
+
+      <!-- ==================================================== -->
+      <!-- TAB 1: 📊 OVERVIEW -->
+      <!-- ==================================================== -->
+      <section id="tab-overview" class="tab-pane flex flex-col gap-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">Academic Overview</h2>
+            <p class="text-sm text-slate-400">Welcome back! Here's your study roadmap and priorities for today.</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="openModal('modal-task')" class="px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-lg shadow-violet-600/20 transition-all">
+              <i data-lucide="plus" class="w-4 h-4"></i> New Task
+            </button>
+            <button onclick="switchTab('focus')" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-medium text-xs flex items-center gap-1.5 transition-all">
+              <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i> Start Study Session
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Quick Stat Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Card 1: Today's Classes -->
+          <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/60 border border-slate-800 flex items-center justify-between shadow-sm">
+            <div>
+              <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Today's Classes</p>
+              <h3 id="stat-today-classes" class="text-2xl font-bold text-white mt-1">--</h3>
+              <p id="stat-today-day" class="text-xs text-blue-400 mt-1 font-medium">Monday</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
+              <i data-lucide="calendar" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <!-- Card 2: Upcoming Exam -->
+          <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/60 border border-slate-800 flex items-center justify-between shadow-sm">
+            <div>
+              <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Next Exam In</p>
+              <h3 id="stat-next-exam-countdown" class="text-2xl font-bold text-amber-400 mt-1">--</h3>
+              <p id="stat-next-exam-name" class="text-xs text-slate-400 mt-1 truncate max-w-[150px]">No upcoming exams</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+              <i data-lucide="alarm-clock" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <!-- Card 3: Pending Tasks -->
+          <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/60 border border-slate-800 flex items-center justify-between shadow-sm">
+            <div>
+              <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Pending Tasks</p>
+              <h3 id="stat-pending-tasks" class="text-2xl font-bold text-white mt-1">--</h3>
+              <p class="text-xs text-emerald-400 mt-1 font-medium">Assignments & To-Dos</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <i data-lucide="check-circle" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <!-- Card 4: Attendance Average -->
+          <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/60 border border-slate-800 flex items-center justify-between shadow-sm">
+            <div>
+              <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Overall Attendance</p>
+              <h3 id="stat-avg-attendance" class="text-2xl font-bold text-white mt-1">--%</h3>
+              <p id="stat-att-status" class="text-xs text-cyan-400 mt-1 font-medium">Safe &gt; 75% Target</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center">
+              <i data-lucide="percent" class="w-6 h-6"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 Column Overview Section: Today's Schedule & High Priority Tasks -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- Today's Schedule -->
+          <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i data-lucide="clock" class="w-5 h-5 text-violet-400"></i>
+                <h3 class="font-bold text-lg text-white">Today's Class Schedule</h3>
+              </div>
+              <button onclick="switchTab('timetable')" class="text-xs text-violet-400 hover:text-violet-300 font-medium">Full Week &rarr;</button>
+            </div>
+
+            <div id="overview-today-classes" class="flex flex-col gap-3 custom-scrollbar max-h-[320px] overflow-y-auto pr-1">
+              <!-- Rendered via JS -->
+              <p class="text-slate-500 text-sm">Loading today's schedule...</p>
+            </div>
+          </div>
+
+          <!-- Urgent Tasks & Assignments -->
+          <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i data-lucide="check-square" class="w-5 h-5 text-emerald-400"></i>
+                <h3 class="font-bold text-lg text-white">Priority Deadlines</h3>
+              </div>
+              <button onclick="switchTab('tasks')" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium">View All &rarr;</button>
+            </div>
+
+            <div id="overview-priority-tasks" class="flex flex-col gap-3 custom-scrollbar max-h-[320px] overflow-y-auto pr-1">
+              <!-- Rendered via JS -->
+              <p class="text-slate-500 text-sm">Loading tasks...</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==================================================== -->
+      <!-- TAB 2: 📅 SEMESTER TIMETABLE -->
+      <!-- ==================================================== -->
+      <section id="tab-timetable" class="tab-pane hidden flex flex-col gap-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">Semester Timetable</h2>
+            <p class="text-sm text-slate-400">Weekly class and lab schedules with room numbers and instructors.</p>
+          </div>
+          <button onclick="openModal('modal-class')" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add Class
+          </button>
+        </div>
+
+        <!-- Day Selector Pills -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
+          <button onclick="filterTimetableDay('All')" class="day-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-violet-600 text-white shadow-sm" data-day="All">All Days</button>
+          <button onclick="filterTimetableDay('Monday')" class="day-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700" data-day="Monday">Monday</button>
+          <button onclick="filterTimetableDay('Tuesday')" class="day-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700" data-day="Tuesday">Tuesday</button>
+          <button onclick="filterTimetableDay('Wednesday')" class="day-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700" data-day="Wednesday">Wednesday</button>
+          <button onclick="filterTimetableDay('Thursday')" class="day-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700" data-day="Thursday">Thursday</button>
+          <button onclick="filterTimetableDay('Friday')" class="day-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700" data-day="Friday">Friday</button>
+          <button onclick="filterTimetableDay('Saturday')" class="day-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700" data-day="Saturday">Saturday</button>
+        </div>
+
+        <!-- Timetable Grid Container -->
+        <div id="timetable-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Rendered via JS -->
+        </div>
+      </section>
+
+      <!-- ==================================================== -->
+      <!-- TAB 3: 📝 EXAMS & TESTS -->
+      <!-- ==================================================== -->
+      <section id="tab-exams" class="tab-pane hidden flex flex-col gap-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">Exams & Tests Tracker</h2>
+            <p class="text-sm text-slate-400">Keep track of midterms, lab finals, exam venues, and live countdowns.</p>
+          </div>
+          <button onclick="openModal('modal-exam')" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm flex items-center gap-2 shadow-lg shadow-amber-600/20 transition-all">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add Exam
+          </button>
+        </div>
+
+        <!-- Exams List Grid -->
+        <div id="exams-container" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- Rendered via JS -->
+        </div>
+      </section>
+
+      <!-- ==================================================== -->
+      <!-- TAB 4: ✅ TASKS & ASSIGNMENTS -->
+      <!-- ==================================================== -->
+      <section id="tab-tasks" class="tab-pane hidden flex flex-col gap-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">Task & Assignment Manager</h2>
+            <p class="text-sm text-slate-400">Stay ahead of assignments, lab records, reading lists, and project deadlines.</p>
+          </div>
+          <button onclick="openModal('modal-task')" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add Task
+          </button>
+        </div>
+
+        <!-- Filter Badges -->
+        <div class="flex items-center gap-2">
+          <button onclick="filterTasks('All')" class="task-filter-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white" data-filter="All">All</button>
+          <button onclick="filterTasks('Pending')" class="task-filter-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700" data-filter="Pending">Pending</button>
+          <button onclick="filterTasks('In Progress')" class="task-filter-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700" data-filter="In Progress">In Progress</button>
+          <button onclick="filterTasks('Completed')" class="task-filter-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700" data-filter="Completed">Completed</button>
+        </div>
+
+        <!-- Tasks Container -->
+        <div id="tasks-container" class="flex flex-col gap-3">
+          <!-- Rendered via JS -->
+        </div>
+      </section>
+
+      <!-- ==================================================== -->
+      <!-- TAB 5: 🎯 FOCUS & DOOMSCROLL SHIELD -->
+      <!-- ==================================================== -->
+      <section id="tab-focus" class="tab-pane hidden flex flex-col gap-6">
+        <div>
+          <h2 class="text-2xl font-bold text-white tracking-tight">Focus Chamber & Anti-Doomscroll Shield</h2>
+          <p class="text-sm text-slate-400">Combine a Pomodoro study timer with your AI webcam detector to eliminate distractions.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- Box 1: Pomodoro Timer -->
+          <div class="p-8 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center text-center shadow-lg relative overflow-hidden">
+            <div class="flex items-center gap-2 mb-6">
+              <button onclick="setPomodoroMode('study')" id="pomo-study-btn" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-violet-600 text-white">Study (25m)</button>
+              <button onclick="setPomodoroMode('shortBreak')" id="pomo-short-btn" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">Short Break (5m)</button>
+              <button onclick="setPomodoroMode('longBreak')" id="pomo-long-btn" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">Long Break (15m)</button>
+            </div>
+
+            <!-- Big Timer -->
+            <div id="pomodoro-display" class="text-7xl font-extrabold tracking-tighter text-white font-mono my-4">
+              25:00
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center gap-4 mt-6">
+              <button id="pomo-toggle-btn" onclick="togglePomodoro()" class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 text-white flex items-center justify-center shadow-lg shadow-violet-600/30 transition-all">
+                <i data-lucide="play" id="pomo-icon" class="w-7 h-7"></i>
+              </button>
+              <button onclick="resetPomodoro()" class="w-12 h-12 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center border border-slate-700 transition-all" title="Reset Timer">
+                <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+              </button>
+            </div>
+
+            <div class="mt-8 flex items-center gap-4 text-xs text-slate-400">
+              <span>Completed Sessions: <strong id="pomo-count" class="text-violet-400">0</strong></span>
+              <span>•</span>
+              <span>Audio Chime: <strong class="text-emerald-400">Active</strong></span>
+            </div>
+          </div>
+
+          <!-- Box 2: Doomscroll Camera Shield Integration -->
+          <div class="p-8 rounded-3xl bg-gradient-to-br from-rose-950/20 via-slate-900 to-slate-900 border border-rose-900/30 flex flex-col justify-between shadow-lg">
+            <div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center">
+                    <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-lg text-white">AI Doomscroll Camera Shield</h3>
+                    <p class="text-xs text-slate-400">YOLOv8 Small Phone Tracker</p>
+                  </div>
+                </div>
+                <span id="shield-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700">Idle</span>
+              </div>
+
+              <div class="my-6 space-y-3 text-sm text-slate-300">
+                <div class="flex items-start gap-2.5">
+                  <i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
+                  <span>Monitors your desk for phone pickups while studying.</span>
+                </div>
+                <div class="flex items-start gap-2.5">
+                  <i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
+                  <span>Plays alert chime if phone is held longer than 1.5 seconds.</span>
+                </div>
+                <div class="flex items-start gap-2.5">
+                  <i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
+                  <span>Centered alert overlay with slanting/tilted phone detection.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="flex flex-col gap-3">
+              <button id="shield-action-btn" onclick="toggleDoomscrollShield()" class="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all">
+                <i data-lucide="video" class="w-5 h-5"></i>
+                <span id="shield-btn-text">Launch Doomscroll Camera Shield</span>
+              </button>
+              <p class="text-xs text-center text-slate-500">
+                Opens the OpenCV webcam stream with YOLOv8 inference. Press <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300">q</kbd> in camera window or click stop anytime.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==================================================== -->
+      <!-- TAB 6: 📈 ATTENDANCE TRACKER -->
+      <!-- ==================================================== -->
+      <section id="tab-attendance" class="tab-pane hidden flex flex-col gap-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">Attendance & Bunk Calculator</h2>
+            <p class="text-sm text-slate-400">Track subject attendance, calculate safe bunk limits, and avoid detention penalties.</p>
+          </div>
+          <button onclick="openModal('modal-attendance')" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-medium text-sm flex items-center gap-2 shadow-lg shadow-cyan-600/20 transition-all">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add Subject
+          </button>
+        </div>
+
+        <div id="attendance-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <!-- Rendered via JS -->
+        </div>
+      </section>
+
+      <!-- ==================================================== -->
+      <!-- TAB 7: 🎓 GPA & GRADE CALCULATOR -->
+      <!-- ==================================================== -->
+      <section id="tab-gpa" class="tab-pane hidden flex flex-col gap-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">GPA & Target Grade Predictor</h2>
+            <p class="text-sm text-slate-400">Calculate semester SGPA, cumulative CGPA, and estimate scores needed for your goal.</p>
+          </div>
+          <button onclick="openModal('modal-gpa')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition-all">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add Course Grade
+          </button>
+        </div>
+
+        <!-- GPA Stat Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+            <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Overall SGPA / CGPA</p>
+            <h3 id="gpa-overall-score" class="text-4xl font-extrabold text-indigo-400 mt-2">--</h3>
+            <p class="text-xs text-slate-400 mt-1">Weighted by credit units</p>
+          </div>
+          <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+            <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Total Credits</p>
+            <h3 id="gpa-total-credits" class="text-4xl font-extrabold text-white mt-2">--</h3>
+            <p class="text-xs text-slate-400 mt-1">Registered course credits</p>
+          </div>
+          <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+            <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Academic Standing</p>
+            <h3 id="gpa-standing-label" class="text-2xl font-bold text-emerald-400 mt-3">First Class with Distinction</h3>
+            <p class="text-xs text-slate-400 mt-1">Based on standard 10-point scale</p>
+          </div>
+        </div>
+
+        <!-- GPA Table -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="p-4 border-b border-slate-800 font-semibold text-sm text-white">Course Grade Records</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-800/50 text-slate-400 text-xs uppercase font-medium">
+                <tr>
+                  <th class="px-5 py-3">Semester</th>
+                  <th class="px-5 py-3">Subject / Course</th>
+                  <th class="px-5 py-3">Credits</th>
+                  <th class="px-5 py-3">Grade Point</th>
+                  <th class="px-5 py-3">Weighted Score</th>
+                  <th class="px-5 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="gpa-table-body" class="divide-y divide-slate-800 text-slate-300">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 🪟 MODALS FOR ADDING DATA -->
+  <!-- ======================================================== -->
+
+  <!-- Modal 1: Add Timetable Class -->
+  <div id="modal-class" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md flex flex-col gap-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-lg text-white">Add Class to Timetable</h3>
+        <button onclick="closeModal('modal-class')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="saveClass(event)" class="flex flex-col gap-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Day of Week</label>
+          <select id="class-day" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-violet-500 focus:outline-none">
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Subject Name</label>
+          <input type="text" id="class-subject" required placeholder="e.g. Distributed Systems" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-violet-500 focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Start Time</label>
+            <input type="time" id="class-start" required value="09:00" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-violet-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400">End Time</label>
+            <input type="time" id="class-end" required value="10:30" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-violet-500 focus:outline-none">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Room / Lab</label>
+            <input type="text" id="class-room" placeholder="e.g. Room 304" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-violet-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Instructor</label>
+            <input type="text" id="class-instructor" placeholder="e.g. Dr. Kumar" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-violet-500 focus:outline-none">
+          </div>
+        </div>
+        <button type="submit" class="mt-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-sm text-white transition-all">Save to Timetable</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Add Exam -->
+  <div id="modal-exam" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md flex flex-col gap-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-lg text-white">Add Exam Schedule</h3>
+        <button onclick="closeModal('modal-exam')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="saveExam(event)" class="flex flex-col gap-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Subject Name</label>
+          <input type="text" id="exam-subject" required placeholder="e.g. Artificial Intelligence" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-amber-500 focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Exam Type</label>
+            <select id="exam-type" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-amber-500 focus:outline-none">
+              <option value="Midterm Exam">Midterm Exam</option>
+              <option value="Final Semester Exam">Final Semester Exam</option>
+              <option value="Practical / Lab Exam">Practical / Lab Exam</option>
+              <option value="Unit Test / Quiz">Unit Test / Quiz</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Exam Date</label>
+            <input type="date" id="exam-date" required class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-amber-500 focus:outline-none">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Start Time</label>
+            <input type="time" id="exam-start" required value="10:00" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-amber-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Venue / Room</label>
+            <input type="text" id="exam-venue" placeholder="e.g. Hall B" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-amber-500 focus:outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Syllabus Topics</label>
+          <input type="text" id="exam-syllabus" placeholder="e.g. Chapters 1 to 4" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-amber-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Special Notes</label>
+          <input type="text" id="exam-notes" placeholder="e.g. Bring calculator, blue pen" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-amber-500 focus:outline-none">
+        </div>
+        <button type="submit" class="mt-2 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 font-semibold text-sm text-white transition-all">Save Exam</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Add Task -->
+  <div id="modal-task" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md flex flex-col gap-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-lg text-white">Add Task / Assignment</h3>
+        <button onclick="closeModal('modal-task')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="saveTask(event)" class="flex flex-col gap-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Task Title</label>
+          <input type="text" id="task-title" required placeholder="e.g. Complete Lab Report 4" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-emerald-500 focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Subject</label>
+            <input type="text" id="task-subject" placeholder="e.g. Computer Networks" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Due Date</label>
+            <input type="date" id="task-due" required class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-emerald-500 focus:outline-none">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Priority</label>
+            <select id="task-priority" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-emerald-500 focus:outline-none">
+              <option value="High">High Priority</option>
+              <option value="Medium" selected>Medium Priority</option>
+              <option value="Low">Low Priority</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Status</label>
+            <select id="task-status" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-emerald-500 focus:outline-none">
+              <option value="Pending" selected>Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Notes / Details</label>
+          <input type="text" id="task-notes" placeholder="e.g. Minimum 3 pages with graphs" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-emerald-500 focus:outline-none">
+        </div>
+        <button type="submit" class="mt-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold text-sm text-white transition-all">Save Task</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Add Attendance Subject -->
+  <div id="modal-attendance" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md flex flex-col gap-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-lg text-white">Add Attendance Subject</h3>
+        <button onclick="closeModal('modal-attendance')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="saveAttendance(event)" class="flex flex-col gap-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Subject Name</label>
+          <input type="text" id="att-subject" required placeholder="e.g. Cloud Computing" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-cyan-500 focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Attended Classes</label>
+            <input type="number" id="att-attended" min="0" required value="0" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-cyan-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Total Classes Held</label>
+            <input type="number" id="att-total" min="0" required value="0" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-cyan-500 focus:outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Minimum Required %</label>
+          <input type="number" id="att-min" min="50" max="100" value="75" required class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-cyan-500 focus:outline-none">
+        </div>
+        <button type="submit" class="mt-2 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-semibold text-sm text-white transition-all">Save Subject</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: Add GPA Course -->
+  <div id="modal-gpa" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md flex flex-col gap-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-lg text-white">Add Course Grade</h3>
+        <button onclick="closeModal('modal-gpa')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="saveGpa(event)" class="flex flex-col gap-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Semester</label>
+          <input type="text" id="gpa-semester" required value="Semester 5" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Course / Subject Name</label>
+          <input type="text" id="gpa-subject" required placeholder="e.g. Web Technologies" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Credits</label>
+            <input type="number" step="0.5" id="gpa-credits" min="0.5" max="10" required value="3.0" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-indigo-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Grade Point (out of 10)</label>
+            <input type="number" step="0.1" id="gpa-point" min="0" max="10" required value="9.0" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-indigo-500 focus:outline-none">
+          </div>
+        </div>
+        <button type="submit" class="mt-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold text-sm text-white transition-all">Save Course</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-slate-800 border border-slate-700 text-white text-sm shadow-xl flex items-center gap-2.5 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-msg">Operation successful</span>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- ⚡ CORE JAVASCRIPT LOGIC -->
+  <!-- ======================================================== -->
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // 1. Clock & Date
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('live-time').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById('live-date').innerText = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 2. Tab Navigation
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.getElementById('tab-' + tabId).classList.remove('hidden');
+
+      // Update sidebar active buttons
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.tab === tabId) {
+          btn.classList.add('bg-slate-800', 'text-white');
+        } else {
+          btn.classList.remove('bg-slate-800', 'text-white');
+        }
+      });
+
+      // Reload data when tab changes
+      if (tabId === 'overview') loadOverview();
+      if (tabId === 'timetable') loadTimetable();
+      if (tabId === 'exams') loadExams();
+      if (tabId === 'tasks') loadTasks();
+      if (tabId === 'attendance') loadAttendance();
+      if (tabId === 'gpa') loadGpa();
+      if (tabId === 'focus') checkShieldStatus();
+
+      lucide.createIcons();
+    }
+
+    // Toast helper
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').innerText = msg;
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 3000);
+    }
+
+    // Modal Helpers
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+      lucide.createIcons();
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    // ======================================================
+    // 📊 OVERVIEW LOADER
+    // ======================================================
+    async function loadOverview() {
+      try {
+        const res = await fetch('/api/stats');
+        const stats = await res.json();
+
+        document.getElementById('stat-today-classes').innerText = stats.today_classes_count;
+        document.getElementById('stat-today-day').innerText = stats.today_day;
+        document.getElementById('stat-pending-tasks').innerText = stats.pending_tasks_count;
+        document.getElementById('stat-avg-attendance').innerText = stats.avg_attendance + '%';
+
+        if (stats.next_exam) {
+          const examDate = new Date(stats.next_exam.exam_date + 'T' + stats.next_exam.start_time);
+          const diffDays = Math.ceil((examDate - new Date()) / (1000 * 60 * 60 * 24));
+          document.getElementById('stat-next-exam-countdown').innerText = diffDays <= 0 ? 'Today!' : `${diffDays}d left`;
+          document.getElementById('stat-next-exam-name').innerText = stats.next_exam.subject;
+        } else {
+          document.getElementById('stat-next-exam-countdown').innerText = 'None';
+          document.getElementById('stat-next-exam-name').innerText = 'All clear!';
+        }
+
+        // Today's classes
+        const ttRes = await fetch(`/api/timetable?day=${stats.today_day}`);
+        const todayClasses = await ttRes.json();
+        const ttContainer = document.getElementById('overview-today-classes');
+
+        if (todayClasses.length === 0) {
+          ttContainer.innerHTML = `
+            <div class="p-6 rounded-xl bg-slate-800/40 border border-slate-800 text-center">
+              <p class="text-slate-400 text-sm">🎉 No classes scheduled for ${stats.today_day}!</p>
+            </div>
+          `;
+        } else {
+          ttContainer.innerHTML = todayClasses.map(c => `
+            <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-800 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-2.5 h-10 rounded-full" style="background-color: ${c.color}"></div>
+                <div>
+                  <h4 class="font-bold text-sm text-white">${c.subject}</h4>
+                  <p class="text-xs text-slate-400">${c.room ? c.room + ' • ' : ''}${c.instructor || 'Class'}</p>
+                </div>
+              </div>
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-700/60 text-slate-200">
+                ${c.start_time} - ${c.end_time}
+              </span>
+            </div>
+          `).join('');
+        }
+
+        // Priority Tasks
+        const taskRes = await fetch('/api/tasks?status=Pending');
+        const tasks = await taskRes.json();
+        const tasksContainer = document.getElementById('overview-priority-tasks');
+
+        if (tasks.length === 0) {
+          tasksContainer.innerHTML = `
+            <div class="p-6 rounded-xl bg-slate-800/40 border border-slate-800 text-center">
+              <p class="text-slate-400 text-sm">✨ You are all caught up! No pending tasks.</p>
+            </div>
+          `;
+        } else {
+          tasksContainer.innerHTML = tasks.slice(0, 4).map(t => `
+            <div class="p-3.5 rounded-xl bg-slate-800/60 border border-slate-800 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <input type="checkbox" onchange="toggleTaskStatus(${t.id}, this.checked)" class="w-4 h-4 rounded text-violet-600 bg-slate-700 border-slate-600 cursor-pointer">
+                <div>
+                  <h4 class="font-medium text-sm text-slate-200">${t.title}</h4>
+                  <p class="text-xs text-slate-400">${t.subject || 'General'} • Due: ${t.due_date}</p>
+                </div>
+              </div>
+              <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded ${t.priority === 'High' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-slate-700 text-slate-300'}">
+                ${t.priority}
+              </span>
+            </div>
+          `).join('');
+        }
+
+        lucide.createIcons();
+      } catch (e) {
+        console.error("Overview load failed", e);
+      }
+    }
+
+    // ======================================================
+    // 📅 TIMETABLE LOADER & CRUD
+    // ======================================================
+    let currentTimetableFilter = 'All';
+
+    async function loadTimetable() {
+      const url = currentTimetableFilter === 'All' ? '/api/timetable' : `/api/timetable?day=${currentTimetableFilter}`;
+      const res = await fetch(url);
+      const classes = await res.json();
+      const container = document.getElementById('timetable-container');
+
+      if (classes.length === 0) {
+        container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400">No classes found. Click "Add Class" above to create your schedule.</div>`;
+        return;
+      }
+
+      container.innerHTML = classes.map(c => `
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between shadow-sm relative group">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-slate-800 text-slate-300">${c.day}</span>
+              <button onclick="deleteTimetable(${c.id})" class="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-500 hover:text-rose-400 transition-all" title="Delete class">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+            <div class="flex items-center gap-2.5 my-2">
+              <div class="w-3 h-3 rounded-full" style="background-color: ${c.color}"></div>
+              <h3 class="font-bold text-base text-white">${c.subject}</h3>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-400 mt-2">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-500"></i>
+              <span>${c.room || 'No Room Specified'}</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-400 mt-1">
+              <i data-lucide="user" class="w-3.5 h-3.5 text-slate-500"></i>
+              <span>${c.instructor || 'Instructor Not Assigned'}</span>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+            <span class="text-slate-500">Timing</span>
+            <span class="font-semibold text-slate-200">${c.start_time} - ${c.end_time}</span>
+          </div>
+        </div>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    function filterTimetableDay(day) {
+      currentTimetableFilter = day;
+      document.querySelectorAll('.day-filter-btn').forEach(btn => {
+        if (btn.dataset.day === day) {
+          btn.classList.add('bg-violet-600', 'text-white');
+          btn.classList.remove('bg-slate-800', 'text-slate-300');
+        } else {
+          btn.classList.remove('bg-violet-600', 'text-white');
+          btn.classList.add('bg-slate-800', 'text-slate-300');
+        }
+      });
+      loadTimetable();
+    }
+
+    async function saveClass(e) {
+      e.preventDefault();
+      const payload = {
+        day: document.getElementById('class-day').value,
+        subject: document.getElementById('class-subject').value,
+        start_time: document.getElementById('class-start').value,
+        end_time: document.getElementById('class-end').value,
+        room: document.getElementById('class-room').value,
+        instructor: document.getElementById('class-instructor').value
+      };
+      await fetch('/api/timetable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      closeModal('modal-class');
+      showToast('Class added to timetable!');
+      loadTimetable();
+      loadOverview();
+    }
+
+    async function deleteTimetable(id) {
+      if (!confirm('Are you sure you want to delete this class?')) return;
+      await fetch(`/api/timetable?id=${id}`, { method: 'DELETE' });
+      showToast('Class deleted.');
+      loadTimetable();
+      loadOverview();
+    }
+
+    // ======================================================
+    // 📝 EXAMS LOADER & CRUD
+    // ======================================================
+    async function loadExams() {
+      const res = await fetch('/api/exams');
+      const exams = await res.json();
+      const container = document.getElementById('exams-container');
+
+      if (exams.length === 0) {
+        container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400">No exams scheduled. Add your midterms or finals above!</div>`;
+        return;
+      }
+
+      container.innerHTML = exams.map(exam => {
+        const examDate = new Date(exam.exam_date + 'T' + exam.start_time);
+        const diffMs = examDate - new Date();
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+        let countdownText = `${diffDays}d ${diffHours}h left`;
+        let countdownBadgeColor = 'bg-slate-800 text-slate-300 border-slate-700';
+
+        if (diffMs <= 0) {
+          countdownText = 'Exam Day / Finished';
+          countdownBadgeColor = 'bg-slate-800 text-slate-500 border-slate-700';
+        } else if (diffDays <= 3) {
+          countdownBadgeColor = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+        } else if (diffDays <= 7) {
+          countdownBadgeColor = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+        }
+
+        return `
+          <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between shadow-sm relative group">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  ${exam.exam_type}
+                </span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-semibold px-2.5 py-1 rounded-lg border ${countdownBadgeColor}">
+                    ${countdownText}
+                  </span>
+                  <button onclick="deleteExam(${exam.id})" class="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 transition-all">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
+
+              <h3 class="text-lg font-bold text-white mb-2">${exam.subject}</h3>
+
+              <div class="grid grid-cols-2 gap-2 text-xs text-slate-400 my-3">
+                <div class="flex items-center gap-2">
+                  <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i>
+                  <span>${exam.exam_date}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-500"></i>
+                  <span>${exam.start_time} - ${exam.end_time}</span>
+                </div>
+                <div class="flex items-center gap-2 col-span-2">
+                  <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-500"></i>
+                  <span>${exam.venue || 'Venue to be announced'}</span>
+                </div>
+              </div>
+
+              ${exam.syllabus ? `
+                <div class="mt-3 p-3 rounded-xl bg-slate-800/40 border border-slate-800/80 text-xs">
+                  <strong class="text-slate-300">Syllabus:</strong> <span class="text-slate-400">${exam.syllabus}</span>
+                </div>
+              ` : ''}
+
+              ${exam.notes ? `
+                <div class="mt-2 text-xs text-slate-400 italic">
+                  Note: ${exam.notes}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    async function saveExam(e) {
+      e.preventDefault();
+      const payload = {
+        subject: document.getElementById('exam-subject').value,
+        exam_type: document.getElementById('exam-type').value,
+        exam_date: document.getElementById('exam-date').value,
+        start_time: document.getElementById('exam-start').value,
+        venue: document.getElementById('exam-venue').value,
+        syllabus: document.getElementById('exam-syllabus').value,
+        notes: document.getElementById('exam-notes').value,
+        end_time: '12:00'
+      };
+      await fetch('/api/exams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      closeModal('modal-exam');
+      showToast('Exam added!');
+      loadExams();
+      loadOverview();
+    }
+
+    async function deleteExam(id) {
+      if (!confirm('Are you sure you want to delete this exam?')) return;
+      await fetch(`/api/exams?id=${id}`, { method: 'DELETE' });
+      showToast('Exam removed.');
+      loadExams();
+      loadOverview();
+    }
+
+    // ======================================================
+    // ✅ TASKS LOADER & CRUD
+    // ======================================================
+    let currentTaskFilter = 'All';
+
+    async function loadTasks() {
+      const url = currentTaskFilter === 'All' ? '/api/tasks' : `/api/tasks?status=${encodeURIComponent(currentTaskFilter)}`;
+      const res = await fetch(url);
+      const tasks = await res.json();
+      const container = document.getElementById('tasks-container');
+
+      if (tasks.length === 0) {
+        container.innerHTML = `<div class="p-8 text-center text-slate-400">No tasks found. Click "Add Task" to create your to-do list!</div>`;
+        return;
+      }
+
+      container.innerHTML = tasks.map(task => {
+        const isCompleted = task.status === 'Completed';
+        const priorityColors = {
+          'High': 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+          'Medium': 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+          'Low': 'text-blue-400 bg-blue-500/10 border-blue-500/20'
+        }[task.priority] || 'text-slate-400 bg-slate-800';
+
+        return `
+          <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-4 transition-all hover:border-slate-700">
+            <div class="flex items-center gap-3.5 flex-1 min-w-0">
+              <input type="checkbox" ${isCompleted ? 'checked' : ''} onchange="toggleTaskStatus(${task.id}, this.checked)" class="w-5 h-5 rounded-lg text-emerald-600 bg-slate-800 border-slate-700 cursor-pointer">
+              <div class="flex-1 min-w-0">
+                <h4 class="text-sm font-semibold ${isCompleted ? 'line-through text-slate-500' : 'text-slate-100'} truncate">${task.title}</h4>
+                <div class="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
+                  <span>${task.subject || 'General'}</span>
+                  <span>•</span>
+                  <span>Due: ${task.due_date || 'No date'}</span>
+                  ${task.notes ? `<span class="hidden sm:inline italic text-slate-500">• ${task.notes}</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-lg border ${priorityColors}">
+                ${task.priority}
+              </span>
+              <button onclick="deleteTask(${task.id})" class="p-1.5 text-slate-500 hover:text-rose-400 transition-all" title="Delete Task">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function filterTasks(status) {
+      currentTaskFilter = status;
+      document.querySelectorAll('.task-filter-btn').forEach(btn => {
+        if (btn.dataset.filter === status) {
+          btn.classList.add('bg-emerald-600', 'text-white');
+          btn.classList.remove('bg-slate-800', 'text-slate-300');
+        } else {
+          btn.classList.remove('bg-emerald-600', 'text-white');
+          btn.classList.add('bg-slate-800', 'text-slate-300');
+        }
+      });
+      loadTasks();
+    }
+
+    async function toggleTaskStatus(id, isChecked) {
+      const newStatus = isChecked ? 'Completed' : 'Pending';
+      await fetch('/api/tasks', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: newStatus })
+      });
+      loadTasks();
+      loadOverview();
+    }
+
+    async function saveTask(e) {
+      e.preventDefault();
+      const payload = {
+        title: document.getElementById('task-title').value,
+        subject: document.getElementById('task-subject').value,
+        due_date: document.getElementById('task-due').value,
+        priority: document.getElementById('task-priority').value,
+        status: document.getElementById('task-status').value,
+        notes: document.getElementById('task-notes').value
+      };
+      await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      closeModal('modal-task');
+      showToast('Task added!');
+      loadTasks();
+      loadOverview();
+    }
+
+    async function deleteTask(id) {
+      await fetch(`/api/tasks?id=${id}`, { method: 'DELETE' });
+      showToast('Task deleted.');
+      loadTasks();
+      loadOverview();
+    }
+
+    // ======================================================
+    // 🎯 POMODORO & DOOMSCROLL SHIELD
+    // ======================================================
+    let pomodoroInterval = null;
+    let pomodoroTimeLeft = 25 * 60; // 25 minutes
+    let isPomodoroRunning = false;
+    let pomodoroCompletedCount = 0;
+
+    function setPomodoroMode(mode) {
+      clearInterval(pomodoroInterval);
+      isPomodoroRunning = false;
+      updatePomoPlayButton();
+
+      const times = { study: 25 * 60, shortBreak: 5 * 60, longBreak: 15 * 60 };
+      pomodoroTimeLeft = times[mode] || 25 * 60;
+      updatePomodoroDisplay();
+
+      document.querySelectorAll('#pomo-study-btn, #pomo-short-btn, #pomo-long-btn').forEach(btn => {
+        btn.classList.remove('bg-violet-600', 'text-white');
+        btn.classList.add('bg-slate-800', 'text-slate-400');
+      });
+
+      if (mode === 'study') document.getElementById('pomo-study-btn').className = 'px-4 py-1.5 rounded-full text-xs font-semibold bg-violet-600 text-white';
+      if (mode === 'shortBreak') document.getElementById('pomo-short-btn').className = 'px-4 py-1.5 rounded-full text-xs font-semibold bg-violet-600 text-white';
+      if (mode === 'longBreak') document.getElementById('pomo-long-btn').className = 'px-4 py-1.5 rounded-full text-xs font-semibold bg-violet-600 text-white';
+    }
+
+    function togglePomodoro() {
+      if (isPomodoroRunning) {
+        clearInterval(pomodoroInterval);
+        isPomodoroRunning = false;
+      } else {
+        isPomodoroRunning = true;
+        pomodoroInterval = setInterval(() => {
+          if (pomodoroTimeLeft > 0) {
+            pomodoroTimeLeft--;
+            updatePomodoroDisplay();
+          } else {
+            clearInterval(pomodoroInterval);
+            isPomodoroRunning = false;
+            pomodoroCompletedCount++;
+            document.getElementById('pomo-count').innerText = pomodoroCompletedCount;
+            playAudioChime();
+            showToast('🎉 Pomodoro Session Completed! Take a well-deserved break.');
+          }
+        }, 1000);
+      }
+      updatePomoPlayButton();
+    }
+
+    function resetPomodoro() {
+      clearInterval(pomodoroInterval);
+      isPomodoroRunning = false;
+      setPomodoroMode('study');
+    }
+
+    function updatePomodoroDisplay() {
+      const mins = Math.floor(pomodoroTimeLeft / 60).toString().padStart(2, '0');
+      const secs = (pomodoroTimeLeft % 60).toString().padStart(2, '0');
+      document.getElementById('pomodoro-display').innerText = `${mins}:${secs}`;
+    }
+
+    function updatePomoPlayButton() {
+      const icon = document.getElementById('pomo-icon');
+      if (isPomodoroRunning) {
+        icon.setAttribute('data-lucide', 'pause');
+      } else {
+        icon.setAttribute('data-lucide', 'play');
+      }
+      lucide.createIcons();
+    }
+
+    // Synthesized Audio Bell using Web Audio API
+    function playAudioChime() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.8);
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.8);
+      } catch (e) {
+        console.log("Audio chime error:", e);
+      }
+    }
+
+    // DOOMSCROLL CAMERA SHIELD INTEGRATION
+    let isShieldActive = false;
+
+    async function checkShieldStatus() {
+      try {
+        const res = await fetch('/api/focus/status');
+        const data = await res.json();
+        isShieldActive = data.running;
+        renderShieldState();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function renderShieldState() {
+      const badge = document.getElementById('shield-badge');
+      const btnText = document.getElementById('shield-btn-text');
+      const headerDot = document.getElementById('shield-dot');
+      const headerText = document.getElementById('shield-text');
+      const actionBtn = document.getElementById('shield-action-btn');
+
+      if (isShieldActive) {
+        badge.innerText = 'Active & Shielding';
+        badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        btnText.innerText = 'Stop Doomscroll Shield';
+        actionBtn.className = 'w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm flex items-center justify-center gap-2 border border-slate-700 transition-all';
+        headerDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
+        headerText.innerText = 'Shield Active';
+        headerText.className = 'text-emerald-400 font-semibold';
+      } else {
+        badge.innerText = 'Idle';
+        badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700';
+        btnText.innerText = 'Launch Doomscroll Camera Shield';
+        actionBtn.className = 'w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all';
+        headerDot.className = 'w-2 h-2 rounded-full bg-slate-500';
+        headerText.innerText = 'Shield Idle';
+        headerText.className = 'text-slate-300';
+      }
+    }
+
+    async function toggleDoomscrollShield() {
+      if (isShieldActive) {
+        await fetch('/api/focus/stop', { method: 'POST' });
+        isShieldActive = false;
+        showToast('Doomscroll Shield deactivated.');
+      } else {
+        await fetch('/api/focus/start', { method: 'POST' });
+        isShieldActive = true;
+        showToast('🚀 Doomscroll Camera Shield launched!');
+      }
+      renderShieldState();
+    }
+
+    // ======================================================
+    // 📈 ATTENDANCE TRACKER LOADER & ACTIONS
+    // ======================================================
+    async function loadAttendance() {
+      const res = await fetch('/api/attendance');
+      const items = await res.json();
+      const container = document.getElementById('attendance-container');
+
+      if (items.length === 0) {
+        container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400">No attendance subjects tracked. Add one above!</div>`;
+        return;
+      }
+
+      container.innerHTML = items.map(att => {
+        const isSafe = att.percentage >= att.min_percentage;
+        const barColor = isSafe ? 'bg-cyan-500' : 'bg-rose-500';
+        const badgeColor = isSafe ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+
+        return `
+          <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between shadow-sm relative group">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold px-2.5 py-0.5 rounded-lg border ${badgeColor}">
+                  ${att.percentage}%
+                </span>
+                <button onclick="deleteAttendance(${att.id})" class="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 transition-all">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+
+              <h3 class="text-base font-bold text-white mb-1">${att.subject}</h3>
+              <p class="text-xs text-slate-400">${att.attended} / ${att.total} classes attended</p>
+
+              <!-- Progress Bar -->
+              <div class="w-full bg-slate-800 h-2 rounded-full my-3 overflow-hidden">
+                <div class="${barColor} h-2 rounded-full transition-all duration-500" style="width: ${Math.min(100, att.percentage)}%"></div>
+              </div>
+
+              <!-- Smart Bunk Advice -->
+              <div class="p-2.5 rounded-xl bg-slate-800/50 border border-slate-800 text-xs ${isSafe ? 'text-emerald-300' : 'text-rose-300'}">
+                ${att.status_text}
+              </div>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-800">
+              <button onclick="updateAttendance(${att.id}, 'attend')" class="py-2 px-3 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 font-semibold text-xs transition-all flex items-center justify-center gap-1.5">
+                <i data-lucide="check" class="w-3.5 h-3.5"></i> Attended
+              </button>
+              <button onclick="updateAttendance(${att.id}, 'miss')" class="py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 font-semibold text-xs transition-all flex items-center justify-center gap-1.5">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i> Missed
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    async function updateAttendance(id, action) {
+      await fetch('/api/attendance', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action })
+      });
+      loadAttendance();
+      loadOverview();
+    }
+
+    async function saveAttendance(e) {
+      e.preventDefault();
+      const payload = {
+        subject: document.getElementById('att-subject').value,
+        attended: parseInt(document.getElementById('att-attended').value),
+        total: parseInt(document.getElementById('att-total').value),
+        min_percentage: parseFloat(document.getElementById('att-min').value)
+      };
+      await fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      closeModal('modal-attendance');
+      showToast('Attendance subject added!');
+      loadAttendance();
+      loadOverview();
+    }
+
+    async function deleteAttendance(id) {
+      if (!confirm('Delete this attendance entry?')) return;
+      await fetch(`/api/attendance?id=${id}`, { method: 'DELETE' });
+      showToast('Subject removed.');
+      loadAttendance();
+      loadOverview();
+    }
+
+    // ======================================================
+    // 🎓 GPA & GRADE CALCULATOR LOADER & CRUD
+    // ======================================================
+    async function loadGpa() {
+      const res = await fetch('/api/gpa');
+      const data = await res.json();
+
+      document.getElementById('gpa-overall-score').innerText = data.overall_gpa;
+      document.getElementById('gpa-total-credits').innerText = data.total_credits;
+
+      let standing = 'Satisfactory';
+      if (data.overall_gpa >= 9.0) standing = 'First Class with Distinction';
+      else if (data.overall_gpa >= 8.0) standing = 'First Class (Honors)';
+      else if (data.overall_gpa >= 7.0) standing = 'Second Class Upper';
+      document.getElementById('gpa-standing-label').innerText = standing;
+
+      const tbody = document.getElementById('gpa-table-body');
+      if (data.courses.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">No course grades added yet.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.courses.map(c => `
+        <tr class="hover:bg-slate-800/30 transition-all">
+          <td class="px-5 py-3.5 text-xs text-slate-400">${c.semester}</td>
+          <td class="px-5 py-3.5 font-medium text-white">${c.subject}</td>
+          <td class="px-5 py-3.5 text-slate-300">${c.credits}</td>
+          <td class="px-5 py-3.5 font-semibold text-indigo-400">${c.grade_point}</td>
+          <td class="px-5 py-3.5 text-slate-300 font-medium">${(c.credits * c.grade_point).toFixed(1)}</td>
+          <td class="px-5 py-3.5 text-right">
+            <button onclick="deleteGpa(${c.id})" class="p-1 text-slate-500 hover:text-rose-400 transition-all">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    async function saveGpa(e) {
+      e.preventDefault();
+      const payload = {
+        semester: document.getElementById('gpa-semester').value,
+        subject: document.getElementById('gpa-subject').value,
+        credits: parseFloat(document.getElementById('gpa-credits').value),
+        grade_point: parseFloat(document.getElementById('gpa-point').value)
+      };
+      await fetch('/api/gpa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      closeModal('modal-gpa');
+      showToast('Course grade recorded!');
+      loadGpa();
+    }
+
+    async function deleteGpa(id) {
+      if (!confirm('Delete this course grade?')) return;
+      await fetch(`/api/gpa?id=${id}`, { method: 'DELETE' });
+      showToast('Course grade deleted.');
+      loadGpa();
+    }
+
+    // Theme Toggle
+    function toggleTheme() {
+      const html = document.documentElement;
+      const icon = document.getElementById('theme-icon');
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        icon.setAttribute('data-lucide', 'sun');
+      } else {
+        html.classList.add('dark');
+        icon.setAttribute('data-lucide', 'moon');
+      }
+      lucide.createIcons();
+    }
+
+    // Auto-poll shield status every 4 seconds
+    setInterval(checkShieldStatus, 4000);
+
+    // Initial Load
+    loadOverview();
+    checkShieldStatus();
+  </script>
+</body>
+</html>
