@@ -387,6 +387,57 @@ def normalize_date(val):
             pass
     return datetime.date.today().isoformat()
 
+IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.bmp', '.webp', '.tiff', '.tif')
+
+def _ocr_image_to_rows(image_bytes):
+    """Use EasyOCR to extract tabular rows from an image."""
+    try:
+        import easyocr
+        reader = easyocr.Reader(['en'], gpu=False, verbose=False)
+        results = reader.readtext(image_bytes)
+    except Exception as exc:
+        raise RuntimeError(f"OCR failed: {exc}")
+
+    if not results:
+        return []
+
+    # Each result: ([[tl, tr, br, bl], 'text', conf])
+    # Group detections into rows by Y-coordinate proximity (~20px tolerance)
+    detections = []
+    for bbox, text, conf in results:
+        if conf < 0.3 or not text.strip():
+            continue
+        top_y = min(pt[1] for pt in bbox)
+        left_x = min(pt[0] for pt in bbox)
+        detections.append((top_y, left_x, text.strip()))
+
+    if not detections:
+        return []
+
+    # Sort by Y first
+    detections.sort(key=lambda d: d[0])
+
+    # Group into row buckets within 20px vertical tolerance
+    row_tolerance = 20
+    buckets = []
+    current_bucket = [detections[0]]
+    for det in detections[1:]:
+        if det[0] - current_bucket[0][0] <= row_tolerance:
+            current_bucket.append(det)
+        else:
+            buckets.append(current_bucket)
+            current_bucket = [det]
+    buckets.append(current_bucket)
+
+    # Sort each bucket by X to get left→right column order
+    rows = []
+    for bucket in buckets:
+        bucket.sort(key=lambda d: d[1])
+        rows.append([d[2] for d in bucket])
+
+    return rows
+
+
 def extract_raw_rows(file_storage=None, text_content=None):
     """Extracts a 2D list of strings from an uploaded file or text string."""
     rows = []
@@ -400,6 +451,12 @@ def extract_raw_rows(file_storage=None, text_content=None):
                 if any(r):
                     rows.append([str(c or '').strip() for c in r])
             return rows
+        elif any(filename.endswith(ext) for ext in IMAGE_EXTENSIONS):
+            try:
+                return _ocr_image_to_rows(content)
+            except RuntimeError as exc:
+                # Surface the error to the caller via a special sentinel row
+                return [['__OCR_ERROR__', str(exc)]]
         else:
             try:
                 text = content.decode('utf-8')
@@ -529,6 +586,8 @@ def upload_timetable():
     mode = request.form.get("mode") or (request.json.get("mode") if request.is_json else "replace")
 
     raw_rows = extract_raw_rows(file_storage, text_content)
+    if raw_rows and raw_rows[0] and raw_rows[0][0] == '__OCR_ERROR__':
+        return jsonify({"success": False, "message": f"Image OCR failed: {raw_rows[0][1]}. Make sure EasyOCR models are downloaded and try again."}), 400
     parsed = parse_timetable_rows(raw_rows)
 
     if not parsed:
@@ -561,6 +620,8 @@ def upload_exams():
     mode = request.form.get("mode") or (request.json.get("mode") if request.is_json else "replace")
 
     raw_rows = extract_raw_rows(file_storage, text_content)
+    if raw_rows and raw_rows[0] and raw_rows[0][0] == '__OCR_ERROR__':
+        return jsonify({"success": False, "message": f"Image OCR failed: {raw_rows[0][1]}. Make sure EasyOCR models are downloaded and try again."}), 400
     parsed = parse_exams_rows(raw_rows)
 
     if not parsed:

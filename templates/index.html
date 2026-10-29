@@ -767,7 +767,7 @@
           </div>
           <div>
             <h3 class="font-bold text-lg text-white">Upload Timetable</h3>
-            <p class="text-xs text-slate-400">Import CSV, Excel (.xlsx), or paste schedule text</p>
+            <p class="text-xs text-slate-400">Import CSV, Excel, an image of your schedule, or paste schedule text</p>
           </div>
         </div>
         <button onclick="closeModal('modal-upload-timetable')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -775,7 +775,7 @@
 
       <!-- Mode Tabs (File vs Paste Text) -->
       <div class="flex border-b border-slate-800 gap-4 text-xs font-semibold">
-        <button type="button" onclick="switchUploadMethod('tt', 'file')" id="tt-tab-file-btn" class="pb-2 border-b-2 border-violet-500 text-violet-400">File Upload (.csv, .xlsx)</button>
+        <button type="button" onclick="switchUploadMethod('tt', 'file')" id="tt-tab-file-btn" class="pb-2 border-b-2 border-violet-500 text-violet-400">File or Image Upload</button>
         <button type="button" onclick="switchUploadMethod('tt', 'text')" id="tt-tab-text-btn" class="pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200">Paste Text / Rows</button>
       </div>
 
@@ -785,8 +785,8 @@
           <div class="border-2 border-dashed border-slate-700 hover:border-violet-500 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 text-center bg-slate-800/40 cursor-pointer transition-all" onclick="document.getElementById('tt-file-input').click()">
             <i data-lucide="file-spreadsheet" class="w-10 h-10 text-violet-400"></i>
             <span class="text-sm font-medium text-slate-200" id="tt-file-label">Click or drag & drop your timetable file</span>
-            <span class="text-xs text-slate-500">Supports .CSV, .XLSX, .TXT, or .JSON</span>
-            <input type="file" id="tt-file-input" accept=".csv,.xlsx,.xls,.txt,.json" class="hidden" onchange="updateFileLabel('tt-file-input', 'tt-file-label')">
+            <span class="text-xs text-slate-500">Supports CSV, Excel, text, and PNG/JPG/WEBP images</span>
+            <input type="file" id="tt-file-input" accept=".csv,.xlsx,.xls,.txt,.json,.png,.jpg,.jpeg,.bmp,.webp,.tiff,.tif,image/*" class="hidden" onchange="updateFileLabel('tt-file-input', 'tt-file-label')">
           </div>
         </div>
 
@@ -842,7 +842,7 @@
 
       <!-- Mode Tabs (File vs Paste Text) -->
       <div class="flex border-b border-slate-800 gap-4 text-xs font-semibold">
-        <button type="button" onclick="switchUploadMethod('exam', 'file')" id="exam-tab-file-btn" class="pb-2 border-b-2 border-amber-500 text-amber-400">File Upload (.csv, .xlsx)</button>
+        <button type="button" onclick="switchUploadMethod('exam', 'file')" id="exam-tab-file-btn" class="pb-2 border-b-2 border-amber-500 text-amber-400">File / Photo Upload</button>
         <button type="button" onclick="switchUploadMethod('exam', 'text')" id="exam-tab-text-btn" class="pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200">Paste Text / Rows</button>
       </div>
 
@@ -851,9 +851,9 @@
         <div id="exam-panel-file" class="flex flex-col gap-2">
           <div class="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 text-center bg-slate-800/40 cursor-pointer transition-all" onclick="document.getElementById('exam-file-input').click()">
             <i data-lucide="file-spreadsheet" class="w-10 h-10 text-amber-400"></i>
-            <span class="text-sm font-medium text-slate-200" id="exam-file-label">Click or drag & drop your exam file</span>
-            <span class="text-xs text-slate-500">Supports .CSV, .XLSX, .TXT, or .JSON</span>
-            <input type="file" id="exam-file-input" accept=".csv,.xlsx,.xls,.txt,.json" class="hidden" onchange="updateFileLabel('exam-file-input', 'exam-file-label')">
+            <span class="text-sm font-medium text-slate-200" id="exam-file-label">Click or drag & drop your exam file or schedule photo</span>
+            <span class="text-xs text-slate-500">Supports CSV, Excel (.xlsx), text, and PNG/JPG/WEBP images</span>
+            <input type="file" id="exam-file-input" accept=".csv,.xlsx,.xls,.txt,.json,.png,.jpg,.jpeg,.bmp,.webp,.tiff,.tif,image/*" class="hidden" onchange="updateFileLabel('exam-file-input', 'exam-file-label')">
           </div>
         </div>
 
@@ -1813,4 +1813,3 @@
   </script>
 </body>
 </html>
-
