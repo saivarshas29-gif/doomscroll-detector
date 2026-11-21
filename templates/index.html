@@ -28,6 +28,9 @@
   </script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Client-side AI Detection (TensorFlow.js + COCO-SSD for Vercel & Web) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -451,10 +454,18 @@
               </div>
 
               <!-- Embedded Live Camera View -->
-              <div id="shield-cam-container" class="hidden mb-6 rounded-2xl overflow-hidden border border-rose-500/30 bg-black/60 shadow-inner relative">
-                <img id="shield-cam-feed" src="" alt="Live Camera Shield Feed" class="w-full h-auto object-cover rounded-2xl max-h-80" />
-                <div class="absolute top-3 left-3 bg-rose-600/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow">
+              <div id="shield-cam-container" class="hidden mb-6 rounded-2xl overflow-hidden border border-rose-500/30 bg-black/80 shadow-inner relative">
+                <!-- Video Element for Browser Camera Feed -->
+                <video id="shield-video-elem" autoplay playsinline muted class="w-full h-auto object-cover rounded-2xl max-h-80 -scale-x-100"></video>
+                <!-- Canvas Overlay for Real-time AI Bounding Boxes & Warning Banner -->
+                <canvas id="shield-canvas-overlay" class="absolute inset-0 w-full h-full pointer-events-none -scale-x-100"></canvas>
+                <!-- Fallback Image for Local Server MJPEG stream -->
+                <img id="shield-cam-feed" src="" alt="Live Camera Shield Feed" class="hidden w-full h-auto object-cover rounded-2xl max-h-80" />
+                <div class="absolute top-3 left-3 bg-rose-600/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow z-10">
                   <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span> Live AI Feed
+                </div>
+                <div id="shield-alert-banner" class="hidden absolute top-0 inset-x-0 bg-red-600/95 text-white font-extrabold text-sm sm:text-base py-3 px-4 text-center tracking-wide uppercase shadow-lg z-20 animate-pulse">
+                  🚨 Doomscrolling Detected! Put down your phone!
                 </div>
               </div>
             </div>
@@ -1456,10 +1467,20 @@
       }
     }
 
-    // DOOMSCROLL CAMERA SHIELD INTEGRATION
+    // DOOMSCROLL CAMERA SHIELD INTEGRATION (Hybrid: Local OpenCV + Browser AI on Vercel)
     let isShieldActive = false;
+    let browserCameraStream = null;
+    let browserAiModel = null;
+    let browserDetectionLoopId = null;
+    let clientPhoneDetectStartTime = null;
+    let clientLastSeenTime = 0;
+    let clientAlarmPlaying = false;
+    const isVercelEnvironment = window.location.hostname.includes('vercel.app') || window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost';
 
     async function checkShieldStatus() {
+      if (isVercelEnvironment) {
+        return; // Managed in-browser on cloud deployments
+      }
       try {
         const res = await fetch('/api/focus/status');
         const data = await res.json();
@@ -1478,6 +1499,7 @@
       const actionBtn = document.getElementById('shield-action-btn');
       const camContainer = document.getElementById('shield-cam-container');
       const camFeed = document.getElementById('shield-cam-feed');
+      const videoElem = document.getElementById('shield-video-elem');
 
       if (isShieldActive) {
         badge.innerText = 'Active & Shielding';
@@ -1488,9 +1510,13 @@
         headerText.innerText = 'Shield Active';
         headerText.className = 'text-emerald-400 font-semibold';
         
-        // Show live camera stream right in the website card
-        if (camContainer && camFeed) {
+        if (camContainer) {
           camContainer.classList.remove('hidden');
+        }
+
+        if (!isVercelEnvironment && camFeed) {
+          camFeed.classList.remove('hidden');
+          if (videoElem) videoElem.classList.add('hidden');
           if (!camFeed.src.includes('/api/focus/video_feed')) {
             camFeed.src = '/api/focus/video_feed';
           }
@@ -1504,9 +1530,9 @@
         headerText.innerText = 'Shield Idle';
         headerText.className = 'text-slate-300';
         
-        // Hide camera stream
-        if (camContainer && camFeed) {
-          camContainer.classList.add('hidden');
+        if (camContainer) camContainer.classList.add('hidden');
+        if (camFeed) {
+          camFeed.classList.add('hidden');
           camFeed.src = '';
         }
       }
@@ -1514,15 +1540,182 @@
 
     async function toggleDoomscrollShield() {
       if (isShieldActive) {
-        await fetch('/api/focus/stop', { method: 'POST' });
+        // Stop Shield
         isShieldActive = false;
+        if (isVercelEnvironment) {
+          stopBrowserCameraShield();
+        } else {
+          await fetch('/api/focus/stop', { method: 'POST' });
+        }
         showToast('Doomscroll Shield deactivated.');
       } else {
-        await fetch('/api/focus/start', { method: 'POST' });
+        // Start Shield
         isShieldActive = true;
-        showToast('🚀 Doomscroll Camera Shield launched!');
+        if (isVercelEnvironment) {
+          await startBrowserCameraShield();
+        } else {
+          await fetch('/api/focus/start', { method: 'POST' });
+          showToast('🚀 Doomscroll Camera Shield launched!');
+        }
       }
       renderShieldState();
+    }
+
+    // ==========================================
+    // 🌐 CLIENT-SIDE BROWSER CAMERA & AI SHIELD (FOR VERCEL)
+    // ==========================================
+    async function startBrowserCameraShield() {
+      const videoElem = document.getElementById('shield-video-elem');
+      const canvasElem = document.getElementById('shield-canvas-overlay');
+      const alertBanner = document.getElementById('shield-alert-banner');
+      const camFeed = document.getElementById('shield-cam-feed');
+
+      if (camFeed) camFeed.classList.add('hidden');
+      if (videoElem) videoElem.classList.remove('hidden');
+
+      try {
+        showToast('Initializing camera & browser AI...');
+        
+        // 1. Request user camera in browser
+        browserCameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+          audio: false
+        });
+        videoElem.srcObject = browserCameraStream;
+        await new Promise(r => videoElem.onloadedmetadata = r);
+
+        // 2. Load COCO-SSD object detection model in browser
+        if (!browserAiModel && window.cocoSsd) {
+          browserAiModel = await cocoSsd.load();
+        }
+
+        showToast('🚀 Browser AI Camera Shield is Active!');
+
+        // 3. Start real-time detection loop
+        runBrowserDetectionLoop();
+      } catch (err) {
+        console.error('Camera access error:', err);
+        showToast('Please grant camera permissions to use Doomscroll Shield.');
+        isShieldActive = false;
+        renderShieldState();
+      }
+    }
+
+    function stopBrowserCameraShield() {
+      if (browserDetectionLoopId) {
+        cancelAnimationFrame(browserDetectionLoopId);
+        browserDetectionLoopId = null;
+      }
+      if (browserCameraStream) {
+        browserCameraStream.getTracks().forEach(track => track.stop());
+        browserCameraStream = null;
+      }
+      const videoElem = document.getElementById('shield-video-elem');
+      if (videoElem) videoElem.srcObject = null;
+      
+      const canvas = document.getElementById('shield-canvas-overlay');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      const alertBanner = document.getElementById('shield-alert-banner');
+      if (alertBanner) alertBanner.classList.add('hidden');
+      clientPhoneDetectStartTime = null;
+    }
+
+    async function runBrowserDetectionLoop() {
+      const video = document.getElementById('shield-video-elem');
+      const canvas = document.getElementById('shield-canvas-overlay');
+      const alertBanner = document.getElementById('shield-alert-banner');
+
+      if (!isShieldActive || !video || !canvas || video.readyState !== 4) {
+        if (isShieldActive) {
+          browserDetectionLoopId = requestAnimationFrame(runBrowserDetectionLoop);
+        }
+        return;
+      }
+
+      // Match canvas size to video dimensions
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (browserAiModel) {
+        try {
+          const predictions = await browserAiModel.detect(video);
+          let phoneFound = false;
+
+          for (const pred of predictions) {
+            // Check for cell phone or remote (phones held at tilted angles)
+            if ((pred.class === 'cell phone' || pred.class === 'remote') && pred.score >= 0.25) {
+              phoneFound = true;
+              const [x, y, width, height] = pred.bbox;
+
+              // Draw red bounding box
+              ctx.strokeStyle = '#ef4444';
+              ctx.lineWidth = 4;
+              ctx.strokeRect(x, y, width, height);
+
+              // Draw label
+              ctx.fillStyle = '#ef4444';
+              ctx.fillRect(x, Math.max(0, y - 24), 160, 24);
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 14px sans-serif';
+              ctx.fillText(`Phone (${Math.round(pred.score * 100)}%)`, x + 6, Math.max(16, y - 6));
+            }
+          }
+
+          // Debounce & Alarm Logic
+          const now = Date.now() / 1000;
+          if (phoneFound) {
+            clientLastSeenTime = now;
+            if (clientPhoneDetectStartTime === null) {
+              clientPhoneDetectStartTime = now;
+            }
+          }
+
+          if (clientPhoneDetectStartTime !== null) {
+            if ((now - clientLastSeenTime) <= 1.0) {
+              const elapsed = now - clientPhoneDetectStartTime;
+
+              if (elapsed >= 1.5) {
+                if (alertBanner) alertBanner.classList.remove('hidden');
+                playDoomscrollBrowserAlarm();
+              }
+            } else {
+              clientPhoneDetectStartTime = null;
+              if (alertBanner) alertBanner.classList.add('hidden');
+            }
+          } else {
+            if (alertBanner) alertBanner.classList.add('hidden');
+          }
+        } catch (e) {
+          console.error('Detection frame error:', e);
+        }
+      }
+
+      browserDetectionLoopId = requestAnimationFrame(runBrowserDetectionLoop);
+    }
+
+    function playDoomscrollBrowserAlarm() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch alarm beep
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.25);
+      } catch (err) {}
     }
 
     // ======================================================
