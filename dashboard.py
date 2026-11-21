@@ -64,17 +64,18 @@ def generate_frames():
     model = YOLO(model_path if os.path.exists(model_path) else "yolov8s.pt")
 
     cap = None
-    for backend in [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]:
-        for cam_idx in [0, 1, 2]:
-            temp_cap = cv2.VideoCapture(cam_idx, backend)
-            if temp_cap.isOpened():
-                ret, test_frame = temp_cap.read()
-                if ret and test_frame is not None:
-                    cap = temp_cap
-                    break
-                temp_cap.release()
-        if cap is not None:
-            break
+    if cv2 is not None:
+        for backend in [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]:
+            for cam_idx in [0, 1, 2]:
+                temp_cap = cv2.VideoCapture(cam_idx, backend)
+                if temp_cap.isOpened():
+                    ret, test_frame = temp_cap.read()
+                    if ret and test_frame is not None:
+                        cap = temp_cap
+                        break
+                    temp_cap.release()
+            if cap is not None:
+                break
 
     if cap is None:
         shield_running = False
