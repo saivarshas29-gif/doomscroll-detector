@@ -1621,6 +1621,7 @@
       }
       const alertBanner = document.getElementById('shield-alert-banner');
       if (alertBanner) alertBanner.classList.add('hidden');
+      stopDoomscrollBrowserAlarm();
       clientPhoneDetectStartTime = null;
     }
 
@@ -1693,9 +1694,11 @@
             } else {
               clientPhoneDetectStartTime = null;
               if (alertBanner) alertBanner.classList.add('hidden');
+              stopDoomscrollBrowserAlarm();
             }
           } else {
             if (alertBanner) alertBanner.classList.add('hidden');
+            stopDoomscrollBrowserAlarm();
           }
         } catch (e) {
           console.error('Detection frame error:', e);
@@ -1705,21 +1708,29 @@
       browserDetectionLoopId = requestAnimationFrame(runBrowserDetectionLoop);
     }
 
+    let doomscrollAudioElement = null;
+
     function playDoomscrollBrowserAlarm() {
       try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch alarm beep
-        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.25);
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.25);
-      } catch (err) {}
+        if (!doomscrollAudioElement) {
+          doomscrollAudioElement = new Audio('/static/alarm.mp3');
+          doomscrollAudioElement.loop = true;
+        }
+        if (doomscrollAudioElement.paused) {
+          doomscrollAudioElement.play().catch(e => {
+            console.log("Audio autoplay error:", e);
+          });
+        }
+      } catch (err) {
+        console.error("Audio playback error:", err);
+      }
+    }
+
+    function stopDoomscrollBrowserAlarm() {
+      if (doomscrollAudioElement && !doomscrollAudioElement.paused) {
+        doomscrollAudioElement.pause();
+        doomscrollAudioElement.currentTime = 0;
+      }
     }
 
     // ======================================================
