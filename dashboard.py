@@ -8,12 +8,22 @@ import io
 import re
 import threading
 import time
-import cv2
 import openpyxl
 from flask import Flask, render_template, request, jsonify, Response
 
+# Optional OpenCV import (Vercel Serverless environment lacks webcam and GL/GUI C-libraries)
+try:
+    import cv2
+except Exception:
+    cv2 = None
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "study_data.db")
+
+# On Vercel / serverless platforms, root filesystem is read-only except /tmp
+if os.environ.get("VERCEL"):
+    DB_PATH = "/tmp/study_data.db"
+else:
+    DB_PATH = os.path.join(BASE_DIR, "study_data.db")
 
 app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "templates"))
 
@@ -1083,8 +1093,10 @@ def focus_video_feed():
     )
 
 
+# Initialize database on module load for serverless environments (Vercel)
+init_db()
+
 if __name__ == "__main__":
-    init_db()
     print("\n" + "="*60)
     print("🚀 FocusSphere Study Dashboard is running at:")
     print("👉 http://127.0.0.1:5000")
