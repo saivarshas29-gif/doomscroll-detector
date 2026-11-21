@@ -1584,9 +1584,10 @@
         videoElem.srcObject = browserCameraStream;
         await new Promise(r => videoElem.onloadedmetadata = r);
 
-        // 2. Load COCO-SSD object detection model in browser
+        // 2. Load COCO-SSD object detection model in browser (with mobilenet_v2 for higher accuracy)
         if (!browserAiModel && window.cocoSsd) {
-          browserAiModel = await cocoSsd.load();
+          showToast('Loading AI neural network model...');
+          browserAiModel = await cocoSsd.load({ base: 'mobilenet_v2' });
         }
 
         showToast('🚀 Browser AI Camera Shield is Active!');
@@ -1650,8 +1651,11 @@
           let phoneFound = false;
 
           for (const pred of predictions) {
-            // Check for cell phone or remote (phones held at tilted angles)
-            if ((pred.class === 'cell phone' || pred.class === 'remote') && pred.score >= 0.25) {
+            const cls = pred.class.toLowerCase();
+            // Broader match for phone / portable electronics (handles angled tilted phones)
+            const isPhoneClass = cls === 'cell phone' || cls === 'remote' || cls === 'electronic device' || cls === 'book' && pred.score > 0.45;
+            
+            if (isPhoneClass && pred.score >= 0.18) {
               phoneFound = true;
               const [x, y, width, height] = pred.bbox;
 
