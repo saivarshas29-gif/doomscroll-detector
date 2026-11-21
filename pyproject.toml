@@ -1,2 +1,10 @@
+[project]
+name = "doomscroll-detector"
+version = "0.1.0"
+dependencies = [
+    "flask",
+    "openpyxl"
+]
+
 [tool.vercel]
 entrypoint = "dashboard:app"
