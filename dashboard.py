@@ -6,6 +6,9 @@ import datetime
 import csv
 import io
 import re
+import threading
+import time
+import cv2
 import openpyxl
 from flask import Flask, render_template, request, jsonify, Response
 
@@ -16,6 +19,154 @@ app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "templates"))
 
 # Global tracker for Doomscroll focus process
 doomscroll_process = None
+shield_camera = None
+shield_running = False
+shield_lock = threading.Lock()
+
+
+def generate_frames():
+    """Video streaming generator function."""
+    global shield_camera, shield_running
+    
+    # Lazy imports for detection so Flask boots quickly
+    import pygame
+    from ultralytics import YOLO
+
+    try:
+        pygame.mixer.init()
+    except Exception:
+        pass
+
+    sound_candidates = [
+        os.path.join(BASE_DIR, "alarm.mp3"),
+        os.path.join(BASE_DIR, "alarm.wav"),
+    ]
+    sound_file = next((f for f in sound_candidates if os.path.exists(f)), None)
+    alarm_loaded = False
+    if sound_file:
+        try:
+            pygame.mixer.music.load(sound_file)
+            alarm_loaded = True
+        except Exception:
+            pass
+
+    model_path = os.path.join(BASE_DIR, "yolov8s.pt")
+    model = YOLO(model_path if os.path.exists(model_path) else "yolov8s.pt")
+
+    cap = None
+    for backend in [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]:
+        for cam_idx in [0, 1, 2]:
+            temp_cap = cv2.VideoCapture(cam_idx, backend)
+            if temp_cap.isOpened():
+                ret, test_frame = temp_cap.read()
+                if ret and test_frame is not None:
+                    cap = temp_cap
+                    break
+                temp_cap.release()
+        if cap is not None:
+            break
+
+    if cap is None:
+        shield_running = False
+        return
+
+    # Set HD resolution and mirror horizontal flip for webcam
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    shield_camera = cap
+
+    PHONE_CLASSES = {67: "Phone", 65: "Remote/Phone"}
+    CONFIDENCE_THRESHOLD = 0.22
+    DETECTION_DELAY = 1.5
+    GRACE_PERIOD = 1.0
+
+    phone_detected_start_time = None
+    last_seen_time = 0
+    alarm_active = False
+
+    try:
+        while shield_running:
+            ret, frame = cap.read()
+            if not ret or frame is None:
+                time.sleep(0.02)
+                continue
+
+            # Mirror horizontally for natural video feel
+            frame = cv2.flip(frame, 1)
+
+            results = model(frame, verbose=False)[0]
+            phone_found = False
+
+            for box in results.boxes:
+                class_id = int(box.cls[0])
+                confidence = float(box.conf[0])
+
+                if class_id in PHONE_CLASSES and confidence >= CONFIDENCE_THRESHOLD:
+                    phone_found = True
+                    label = f"{PHONE_CLASSES[class_id]} ({confidence:.2f})"
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
+                    cv2.putText(
+                        frame, 
+                        label, 
+                        (x1, max(20, y1 - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 
+                        0.6, 
+                        (0, 0, 255), 
+                        2
+                    )
+
+            current_time = time.time()
+            if phone_found:
+                last_seen_time = current_time
+                if phone_detected_start_time is None:
+                    phone_detected_start_time = current_time
+
+            if phone_detected_start_time is not None:
+                if (current_time - last_seen_time) <= GRACE_PERIOD:
+                    elapsed_time = current_time - phone_detected_start_time
+
+                    if elapsed_time >= DETECTION_DELAY:
+                        alarm_active = True
+                        if alarm_loaded:
+                            if not pygame.mixer.music.get_busy():
+                                pygame.mixer.music.play(-1)
+                        elif sys.platform == "win32":
+                            import winsound
+                            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+                        
+                        # Alert banner overlay
+                        cv2.rectangle(frame, (0, 0), (frame.shape[1], 80), (0, 0, 220), -1)
+                        cv2.putText(
+                            frame, 
+                            "DOOMSCROLLING DETECTED! PUT DOWN YOUR PHONE!", 
+                            (30, 52), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 
+                            0.8, 
+                            (255, 255, 255), 
+                            2
+                        )
+                else:
+                    phone_detected_start_time = None
+                    if alarm_active:
+                        alarm_active = False
+                        if alarm_loaded:
+                            pygame.mixer.music.stop()
+
+            # Encode frame to JPEG
+            ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+            if not ret:
+                continue
+
+            frame_bytes = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+    finally:
+        if cap is not None:
+            cap.release()
+        shield_camera = None
+        if alarm_loaded:
+            pygame.mixer.music.stop()
 
 
 def get_db():
@@ -889,44 +1040,47 @@ def api_gpa():
 # ==========================================
 @app.route("/api/focus/status", methods=["GET"])
 def focus_status():
-    global doomscroll_process
-    is_running = False
-    if doomscroll_process is not None:
-        if doomscroll_process.poll() is None:
-            is_running = True
-        else:
-            doomscroll_process = None
-    return jsonify({"running": is_running})
+    global doomscroll_process, shield_running
+    proc_running = doomscroll_process is not None and doomscroll_process.poll() is None
+    return jsonify({"running": proc_running or shield_running})
 
 
 @app.route("/api/focus/start", methods=["POST"])
 def focus_start():
-    global doomscroll_process
-    if doomscroll_process is not None and doomscroll_process.poll() is None:
-        return jsonify({"success": True, "message": "Doomscroll detector is already running!"})
-
-    doomscroll_script = os.path.join(BASE_DIR, "Doomscroll.py")
-    python_executable = sys.executable
-
-    try:
-        # Launch Doomscroll.py as independent process
-        doomscroll_process = subprocess.Popen(
-            [python_executable, doomscroll_script],
-            cwd=BASE_DIR
-        )
-        return jsonify({"success": True, "message": "Doomscroll Camera Shield started!"})
-    except Exception as e:
-        return jsonify({"success": False, "message": f"Failed to start: {str(e)}"}), 500
+    global shield_running
+    shield_running = True
+    return jsonify({"success": True, "message": "Doomscroll Camera Shield started!"})
 
 
 @app.route("/api/focus/stop", methods=["POST"])
 def focus_stop():
-    global doomscroll_process
+    global doomscroll_process, shield_running, shield_camera
+    shield_running = False
+    if shield_camera is not None:
+        try:
+            shield_camera.release()
+        except Exception:
+            pass
+        shield_camera = None
+
     if doomscroll_process is not None and doomscroll_process.poll() is None:
-        doomscroll_process.terminate()
+        try:
+            doomscroll_process.terminate()
+        except Exception:
+            pass
         doomscroll_process = None
-        return jsonify({"success": True, "message": "Doomscroll detector stopped."})
-    return jsonify({"success": True, "message": "Detector is not running."})
+
+    return jsonify({"success": True, "message": "Doomscroll detector stopped."})
+
+
+@app.route("/api/focus/video_feed")
+def focus_video_feed():
+    global shield_running
+    shield_running = True
+    return Response(
+        generate_frames(),
+        mimetype="multipart/x-mixed-replace; boundary=frame"
+    )
 
 
 if __name__ == "__main__":
@@ -935,5 +1089,5 @@ if __name__ == "__main__":
     print("🚀 FocusSphere Study Dashboard is running at:")
     print("👉 http://127.0.0.1:5000")
     print("="*60 + "\n")
-    app.run(debug=True, host="127.0.0.1", port=5000)
+    app.run(debug=False, host="127.0.0.1", port=5000)
 

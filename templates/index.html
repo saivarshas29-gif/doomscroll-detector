@@ -449,6 +449,14 @@
                   <span>Centered alert overlay with slanting/tilted phone detection.</span>
                 </div>
               </div>
+
+              <!-- Embedded Live Camera View -->
+              <div id="shield-cam-container" class="hidden mb-6 rounded-2xl overflow-hidden border border-rose-500/30 bg-black/60 shadow-inner relative">
+                <img id="shield-cam-feed" src="" alt="Live Camera Shield Feed" class="w-full h-auto object-cover rounded-2xl max-h-80" />
+                <div class="absolute top-3 left-3 bg-rose-600/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow">
+                  <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span> Live AI Feed
+                </div>
+              </div>
             </div>
 
             <!-- Action Button -->
@@ -1468,6 +1476,8 @@
       const headerDot = document.getElementById('shield-dot');
       const headerText = document.getElementById('shield-text');
       const actionBtn = document.getElementById('shield-action-btn');
+      const camContainer = document.getElementById('shield-cam-container');
+      const camFeed = document.getElementById('shield-cam-feed');
 
       if (isShieldActive) {
         badge.innerText = 'Active & Shielding';
@@ -1477,6 +1487,14 @@
         headerDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
         headerText.innerText = 'Shield Active';
         headerText.className = 'text-emerald-400 font-semibold';
+        
+        // Show live camera stream right in the website card
+        if (camContainer && camFeed) {
+          camContainer.classList.remove('hidden');
+          if (!camFeed.src.includes('/api/focus/video_feed')) {
+            camFeed.src = '/api/focus/video_feed';
+          }
+        }
       } else {
         badge.innerText = 'Idle';
         badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700';
@@ -1485,6 +1503,12 @@
         headerDot.className = 'w-2 h-2 rounded-full bg-slate-500';
         headerText.innerText = 'Shield Idle';
         headerText.className = 'text-slate-300';
+        
+        // Hide camera stream
+        if (camContainer && camFeed) {
+          camContainer.classList.add('hidden');
+          camFeed.src = '';
+        }
       }
     }
 

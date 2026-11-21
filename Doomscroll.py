@@ -131,10 +131,23 @@ def main():
     model_path = os.path.join(BASE_DIR, "yolov8s.pt")
     model = YOLO(model_path if os.path.exists(model_path) else "yolov8s.pt")
 
-    # 3. Start Webcam Stream (0 is usually the default web camera)
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        print("\n[Error] Could not open webcam (index 0).")
+    # 3. Start Webcam Stream with robust backends and fallback indices
+    cap = None
+    for backend in [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]:
+        for cam_idx in [0, 1, 2]:
+            temp_cap = cv2.VideoCapture(cam_idx, backend)
+            if temp_cap.isOpened():
+                ret, test_frame = temp_cap.read()
+                if ret and test_frame is not None:
+                    cap = temp_cap
+                    print(f"Webcam opened successfully on index {cam_idx} with backend {backend}.")
+                    break
+                temp_cap.release()
+        if cap is not None:
+            break
+
+    if cap is None or not cap.isOpened():
+        print("\n[Error] Could not open webcam.")
         print("Please make sure your camera is connected and not currently used by another application.\n")
         return
 
@@ -153,7 +166,15 @@ def main():
     alarm_active = False
 
     print("\n--- Doomscroll Detector Running ---")
-    print("Press 'q' in the camera window (or click 'X') to quit.\n")
+    print("Press 'q' in the camera window to quit.\n")
+
+    # Explicitly configure window to pop up on top of other applications
+    WINDOW_NAME = "Doomscroll Detector"
+    cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_AUTOSIZE)
+    try:
+        cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_TOPMOST, 1)
+    except Exception:
+        pass
 
     try:
         while cap.isOpened():
@@ -231,13 +252,11 @@ def main():
                             pygame.mixer.music.stop()
 
             # Display video feed
-            cv2.imshow("Doomscroll Detector", frame)
+            cv2.imshow(WINDOW_NAME, frame)
 
-            # Check if user pressed 'q' or closed the window via 'X' button
+            # Check if user pressed 'q'
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
-                break
-            if cv2.getWindowProperty("Doomscroll Detector", cv2.WND_PROP_VISIBLE) < 1:
                 break
 
     finally:
